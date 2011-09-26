@@ -32,6 +32,7 @@ public class UdpListener implements Runnable {
 		textView = text_view;
 	}
 
+	//comment
 	@Override
 	public void run() {
 		while (true) {
