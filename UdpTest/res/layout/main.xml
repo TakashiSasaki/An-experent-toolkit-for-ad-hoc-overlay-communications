@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:orientation="vertical" android:layout_width="fill_parent"
+	android:layout_height="fill_parent">
+	<LinearLayout android:layout_width="fill_parent"
+		android:id="@+id/linearLayout1" android:layout_height="wrap_content">
+		<TextView android:text="Src." android:id="@+id/textViewSrc"
+			android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
+		<EditText android:id="@+id/editTextSrc"
+			android:layout_height="wrap_content" android:layout_width="wrap_content"
+			android:layout_weight="1" android:editable="false"></EditText>
+		<TextView android:text="Port" android:id="@+id/textViewSrcPort"
+			android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
+		<EditText android:id="@+id/editTextSrcPort"
+			android:layout_height="wrap_content" android:layout_width="wrap_content"
+			android:layout_weight="1"></EditText>
+	</LinearLayout>
+	<LinearLayout android:layout_width="fill_parent"
+		android:id="@+id/linearLayoutDest" android:layout_height="wrap_content">
+		<TextView android:text="Dest." android:id="@+id/textViewDest"
+			android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
+		<EditText android:id="@+id/editTextDest"
+			android:layout_height="wrap_content" android:layout_width="wrap_content"
+			android:layout_weight="1" android:fitsSystemWindows="true"
+			android:text="127.0.0.1"></EditText>
+		<TextView android:text="Port" android:id="@+id/textViewDestPort"
+			android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
+		<EditText android:id="@+id/editTextDestPort"
+			android:layout_height="wrap_content" android:layout_width="wrap_content"
+			android:layout_weight="1" android:text="12345">
+			<requestFocus></requestFocus>
+		</EditText>
+	</LinearLayout>
+	<LinearLayout android:layout_width="fill_parent"
+		android:id="@+id/linearLayout2" android:layout_height="wrap_content">
+		<EditText android:layout_weight="1" android:id="@+id/editTextToBeSent"
+			android:layout_height="wrap_content" android:layout_width="fill_parent"
+			android:text="test test test"></EditText>
+		<Button android:layout_height="wrap_content" android:text="Send"
+			android:layout_width="wrap_content" android:id="@+id/buttonSend"></Button>
+	</LinearLayout>
+
+	<TextView android:lines="15" android:text="TextView"
+		android:layout_height="wrap_content" android:id="@+id/textViewReceived"
+		android:layout_width="fill_parent"></TextView>
+
+	<Button android:layout_height="wrap_content" android:text="Clear"
+		android:id="@+id/buttonClear" android:layout_width="fill_parent"></Button>
+
+</LinearLayout>
