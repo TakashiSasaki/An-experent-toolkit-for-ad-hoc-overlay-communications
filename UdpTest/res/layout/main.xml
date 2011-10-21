@@ -39,10 +39,14 @@
 		<Button android:layout_height="wrap_content" android:text="Send"
 			android:layout_width="wrap_content" android:id="@+id/buttonSend"></Button>
 	</LinearLayout>
-
-	<TextView android:lines="15" android:text="TextView"
-		android:layout_height="wrap_content" android:id="@+id/textViewReceived"
-		android:layout_width="fill_parent"></TextView>
+ 
+	<EditText android:id="@+id/textViewReceived" 
+				android:layout_height="wrap_content"  android:layout_width="fill_parent"
+				android:background="#FF000000" android:textColor="#FFFFFFFF"
+				android:editable="false" android:enabled="false" 
+				android:scrollbars="vertical"
+				android:lines="7" android:textSize="7pt" android:layout_marginLeft="3pt" android:layout_marginRight="3pt" android:text="EditText">
+	</EditText>
 
 	<Button android:layout_height="wrap_content" android:text="Clear"
 		android:id="@+id/buttonClear" android:layout_width="fill_parent"></Button>
