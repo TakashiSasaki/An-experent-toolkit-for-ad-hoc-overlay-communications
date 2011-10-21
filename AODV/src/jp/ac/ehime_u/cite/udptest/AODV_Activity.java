@@ -54,14 +54,11 @@ public class AODV_Activity extends Activity {
 	// PATH_DISCOVERY_TIMEの間に受信したRREQの送信元とIDを記録
 	public static ArrayList<PastData> receiveRREQ_List = new ArrayList<PastData>();
 	
-	// とりあえずPATH_DISCOVERY_TIME の間に受信したメッセージ0の送信元とIDを記録
-	public static ArrayList<PastData> receiveMessageList = new ArrayList<PastData>();
 
 	// マルチスレッドの排他制御用オブジェクト
 	public static Object routeLock = new Object();
 	public static Object pastDataLock = new Object();
-	
-	
+
 	// その他変数
 	public static int RREQ_ID = 0;
 	public static int seqNum = 0;
@@ -174,7 +171,7 @@ public class AODV_Activity extends Activity {
 				.getByteAddress(source_address);
 
 				// 送信先への経路が存在するかチェック
-				final int index = searchToAdd(routeTable, destination_address_b);
+				final int index = searchToAdd(destination_address_b);
 
 				// 経路が存在する場合、有効かどうかチェック
 				boolean enableRoute = false; // 初期化
@@ -231,13 +228,16 @@ public class AODV_Activity extends Activity {
 						@Override
 						public void run(){
 							
+							
 							// 描画処理があるのでhandlerに投げる
 							mHandler.post(new Runnable(){
+								int index;
+								
 								public void run(){
 									
 									// 以下、定期処理の内容						
 									// 経路が完成した場合、ループを抜ける
-									if (searchToAdd(routeTable, destination_address_b) != -1) {
+									if ((index = searchToAdd(destination_address_b)) != -1) {
 										text_view_received.append("Route_Create_Success!!\n");
 										mTimer.cancel();
 										
@@ -413,11 +413,11 @@ public class AODV_Activity extends Activity {
 	// RouteTable(list)に宛先アドレス(Add)が含まれていないか検索する
 	// 戻り値：リスト内で発見した位置、インデックス
 	// 見つからない場合 -1を返す
-	public static int searchToAdd(ArrayList<RouteTable> list, byte[] Add) {
+	public static int searchToAdd(byte[] Add) {
 
 		synchronized (routeLock) {
-			for (int i = 0; i < list.size(); i++) {
-				if (Arrays.equals((list.get(i).toIpAdd), Add)) {
+			for (int i = 0; i < routeTable.size(); i++) {
+				if (Arrays.equals((routeTable.get(i).toIpAdd), Add)) {
 					return i;
 				}
 			}
@@ -449,6 +449,7 @@ public class AODV_Activity extends Activity {
 		}
 	}
 
+	
 	// 送信textの先頭に、AODVとは無関係であるメッセージタイプ0を挿入する
 	// 以下はフォーマット、[数字]は配列内の位置を示す
 	// [0]		:メッセージタイプ0
@@ -461,8 +462,7 @@ public class AODV_Activity extends Activity {
 		new_message[0] = 0; // メッセージタイプ0
 		System.arraycopy(toIPAddress, 0, new_message, 1, 4);
 		System.arraycopy(my_address, 0, new_message, 1+4, 4);
-		//System.arraycopy(new RREQ().intToByte(message_ID), 0, new_message, 1+4+4, 4);	// intのbyte[]化
-		System.arraycopy(message, 0, new_message, 1+4+4+4, message.length);
+		System.arraycopy(message, 0, new_message, 1+4+4, message.length);
 
 		return new_message;
 	}
@@ -484,10 +484,6 @@ public class AODV_Activity extends Activity {
 		// 送信する文字列の取得
 		String string_to_be_sent = editTextToBeSent.getText()
 				.toString() + "\r\n";
-
-		// ### デバッグ用 ###
-		// Date date1 = new Date(new Date().getTime());
-		// string_to_be_sent = date1.toString()+"\n\r";
 
 		// Byte列化
 		byte[] buffer = string_to_be_sent.getBytes();

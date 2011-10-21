@@ -6,8 +6,10 @@ import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -96,6 +98,7 @@ public class UdpListener implements Runnable {
 				
 	        	switch( receiveBuffer[0] ){
 	        	case 0: // 通信相手からのメッセージ
+        			
 	        		// 自分宛のメッセージなら
 	        		if( isToMe(receiveBuffer,my_address)){
 	        			final String s = AODV_Activity.getStringByByteAddress(getAddressSrc(receiveBuffer))
@@ -105,20 +108,43 @@ public class UdpListener implements Runnable {
 	    					@Override
 	    					public void run() {
 	    						editText.append(s);
+	    						editText.setSelection(editText.getText().toString().length());
 	    					}
 	    				});
 	        		}
 	        		else{	// 次ホップへ転送
-	        			
+	        			// 宛先までの有効経路を持っているか検索
+        				int index = AODV_Activity.searchToAdd(getAddressDest(receiveBuffer));
+        				
+        				// 経路を知っていて
+        				if(index != -1){
+        					// 有効な経路なら
+        					if(AODV_Activity.getRoute(index).stateFlag == 1){
+        						
+        						// 次ホップへそのまま転送
+        						sendMessage(receiveBuffer, AODV_Activity.getRoute(index).nextIpAdd);
+        						
+        						break;
+        					}
+        				}
+        				// 有効な経路を持っていない場合
+
+						// RERRの送信?
+						RouteManager.RERR_Sender(AODV_Activity.getRoute(index),port);
+        				
 	        		}
+	        		
+	        		break;
 	        		
         		case 1:	// RREQ
         			
         			// RREQの受信履歴の中で、古すぎるアドレスの削除
         			if( !AODV_Activity.receiveRREQ_List.isEmpty() ){	// 空でなければ
         				// リストの中で最も古いのは先頭の項目、その生存時間をチェック
-        				if(AODV_Activity.receiveRREQ_List.get(0).lifeTime < new Date().getTime() ){
-        					AODV_Activity.receiveRREQ_List.remove(0);
+        				synchronized (AODV_Activity.pastDataLock) {
+        					if(AODV_Activity.receiveRREQ_List.get(0).lifeTime < new Date().getTime() ){
+        						AODV_Activity.receiveRREQ_List.remove(0);
+        					}
         				}
         			}
         			
@@ -143,7 +169,7 @@ public class UdpListener implements Runnable {
         			long MinimalLifeTime = new Date().getTime()+ 2*AODV_Activity.NET_TRAVERSAL_TIME 
         				- 2 * RReq.getHopCount(receiveBuffer) * AODV_Activity.NODE_TRAVERSAL_TIME;
         			
-        			if( (index = AODV_Activity.searchToAdd(AODV_Activity.routeTable, RReq.getFromIpAdd(receiveBuffer))) != -1){
+        			if( (index = AODV_Activity.searchToAdd(RReq.getFromIpAdd(receiveBuffer))) != -1){
         				life = (AODV_Activity.getRoute(index).lifeTime > MinimalLifeTime)? AODV_Activity.getRoute(index).lifeTime:MinimalLifeTime; 
         			}
         			else{
@@ -189,7 +215,7 @@ public class UdpListener implements Runnable {
         				// RREQ:自分宛のメッセージではありません");
         				
         				// 宛先までの有効経路を持っているか検索
-        				index = AODV_Activity.searchToAdd(AODV_Activity.routeTable, RReq.getToIpAdd(receiveBuffer));
+        				index = AODV_Activity.searchToAdd(RReq.getToIpAdd(receiveBuffer));
         				
         				// 経路を知っていて、Dフラグがオフなら
         				if( (index != -1) && (!RReq.getFlagD(receiveBuffer))){
@@ -223,7 +249,7 @@ public class UdpListener implements Runnable {
 	        					
 	        					// 次に逆経路の更新
 	        					// 逆経路のprecursorListに、順経路の次ホップを追加。エラー時にRERRを伝えるノード
-	        					int index2 = AODV_Activity.searchToAdd(AODV_Activity.routeTable, RReq.getFromIpAdd(receiveBuffer));
+	        					int index2 = AODV_Activity.searchToAdd(RReq.getFromIpAdd(receiveBuffer));
 	        					route = AODV_Activity.getRoute(index2);
 	        					route.preList.add(AODV_Activity.getRoute(index).nextIpAdd);
 	        					AODV_Activity.setRoute(index2, route);
@@ -275,7 +301,7 @@ public class UdpListener implements Runnable {
         			receiveBuffer = RRep.hopCountInc(receiveBuffer, mesLength);
         			
         			// 順経路（RREQ送信元⇒宛先）が存在するかどうか検索
-    				int index2 = AODV_Activity.searchToAdd(AODV_Activity.routeTable, RRep.getToIpAdd(receiveBuffer,mesLength));
+    				int index2 = AODV_Activity.searchToAdd(RRep.getToIpAdd(receiveBuffer,mesLength));
     				
     				// 存在しない場合、順経路の作成
     				if( index2 == -1 ){
@@ -328,9 +354,9 @@ public class UdpListener implements Runnable {
         				// RREP:送信元ＩＰアドレスが自分ではありません
         				
         				// 順経路を示すindex2を再検索、更新
-        				index2 = AODV_Activity.searchToAdd(AODV_Activity.routeTable, RRep.getToIpAdd(receiveBuffer,mesLength));
+        				index2 = AODV_Activity.searchToAdd(RRep.getToIpAdd(receiveBuffer,mesLength));
         				// RREQ生成ノードへの経路（逆経路）を検索
-        				int index3 = AODV_Activity.searchToAdd(AODV_Activity.routeTable, RRep.getFromIpAdd(receiveBuffer,mesLength));
+        				int index3 = AODV_Activity.searchToAdd(RRep.getFromIpAdd(receiveBuffer,mesLength));
         				
         				// 順経路のPrecursorListに、逆経路への次ホップを追加
     					// すでにListに含まれていても、HashSetにより重複は認められないのでOK
@@ -357,10 +383,10 @@ public class UdpListener implements Runnable {
         			
         		case 3:	// RERRを受け取った場合
         			
-        			System.out.println("　このメッセージはRERRです\n");
+        			// "このメッセージはRERRです\n");
         			
         			// 経路の検索
-        			index = AODV_Activity.searchToAdd(AODV_Activity.routeTable, RErr.getIpAdd(receiveBuffer));
+        			index = AODV_Activity.searchToAdd(RErr.getIpAdd(receiveBuffer));
         			
         			// 経路が存在するなら
         			if(index != -1){
@@ -381,6 +407,15 @@ public class UdpListener implements Runnable {
 							RouteManager.localRepair(route,port,my_address);
 						}
 						else{
+							final byte[] destination_address = route.toIpAdd;
+							
+		    				handler.post(new Runnable() {
+		    					@Override
+		    					public void run() {
+		    						editText.append("Route[To:"+AODV_Activity.getStringByByteAddress(destination_address)+"] cannot use\n");
+		    					}
+		    				});
+							
 							// RERRの送信
 							RouteManager.RERR_Sender(route,port);
 						}
@@ -457,6 +492,16 @@ public class UdpListener implements Runnable {
 		else return false;
 	}
 	
+	// メッセージ0の中から宛先アドレスを抜き出す
+	byte[] getAddressDest(byte[] receiveBuffer){
+		byte[] add = new byte[4];
+		
+		// 該当部分を抜き出し
+		System.arraycopy(receiveBuffer, 1, add, 0, 4);
+		
+		return add;
+	}
+	
 	// メッセージ0の中から送信元アドレスを抜き出す
 	byte[] getAddressSrc(byte[] receiveBuffer){
 		byte[] add = new byte[4];
@@ -470,11 +515,49 @@ public class UdpListener implements Runnable {
 	// メッセージ0の中から伝送データを抜き出す
 	byte[] getMessage(byte[] receiveBuffer,int length){
 		// 宛先IPアドレスのコピー先を作成
-		byte[] message = new byte[length];
+		byte[] message = new byte[length-9];
 		
 		// 該当部分を抜き出し
 		System.arraycopy(receiveBuffer,9,message,0,length-9);
 		
 		return message;
+	}
+	
+	// メッセージ0をそのまま宛先へ転送
+	void sendMessage(byte[] receiveBuffer,byte[] destination_address){
+		
+		// データグラムソケットを開く
+		DatagramSocket soc = null;
+		try {
+			soc = new DatagramSocket();
+		} catch (SocketException e) {
+			e.printStackTrace();
+		}
+		
+        // UDPパケットを送信する先となるアドレス
+        InetSocketAddress remoteAddress = null;
+		try {
+			remoteAddress = new InetSocketAddress( InetAddress.getByAddress(destination_address), port);
+		} catch (UnknownHostException e1) {
+			e1.printStackTrace();
+		}
+        
+        // UDPパケット
+        DatagramPacket sendPacket = null;
+		try {
+			sendPacket = new DatagramPacket(receiveBuffer, receiveBuffer.length, remoteAddress);
+		} catch (SocketException e) {
+			e.printStackTrace();
+		}
+        
+        // DatagramSocketインスタンスを生成して、UDPパケットを送信
+        try {
+			soc.send(sendPacket);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+        	
+        //データグラムソケットを閉じる
+        soc.close();
 	}
 }

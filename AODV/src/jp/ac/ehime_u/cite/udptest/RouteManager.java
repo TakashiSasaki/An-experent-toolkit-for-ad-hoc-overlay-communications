@@ -17,9 +17,9 @@ import android.widget.EditText;
 public class RouteManager implements Runnable {
 	
 	RouteTable route;
-	Handler handler;
+	static Handler handler;
 	EditText textDestPort;
-	EditText text_view_received;
+	static EditText text_view_received;
 	byte[] myAddress;
 	
 	public RouteManager(Handler handler_,EditText text_dest_port, EditText text_view_rec) throws IOException{
@@ -131,7 +131,7 @@ public class RouteManager implements Runnable {
 		mTimer.schedule( new TimerTask(){
 				@Override
 				public void run(){
-					int index = AODV_Activity.searchToAdd(AODV_Activity.routeTable, toIp);
+					int index = AODV_Activity.searchToAdd(toIp);
 					
 					// 経路が追加されていて、かつホップ数が修復前以下なら、修復完了
 					// それ以外の場合、RERRを送信する
@@ -141,6 +141,14 @@ public class RouteManager implements Runnable {
 					else{
 						if(AODV_Activity.getRoute(index).hopCount > route_f.hopCount){
 							RERR_Sender(route_f,port);
+							
+							final byte[] destination_address = route_f.toIpAdd;
+		    				handler.post(new Runnable() {
+		    					@Override
+		    					public void run() {
+		    						text_view_received.append("Route[To:"+AODV_Activity.getStringByByteAddress(destination_address)+"] cannot use\n");
+		    					}
+		    				});
 						}
 					}
 				}
