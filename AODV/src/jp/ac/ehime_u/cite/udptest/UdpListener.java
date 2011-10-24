@@ -7,25 +7,15 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
-import java.nio.charset.Charset;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.HashSet;
-import java.util.Iterator;
 
-
-import android.app.AlertDialog;
 import android.os.Handler;
-import android.util.Log;
 import android.widget.EditText;
 import android.widget.ScrollView;
-import android.widget.TextView;
-
 
 public class UdpListener implements Runnable {
 
@@ -431,44 +421,6 @@ public class UdpListener implements Runnable {
 			}
 		}
 	}
-
-	// ログの表示
-	private void PrintReceivedDataList() throws UnsupportedEncodingException {
-		
-		// Handlerにジョブをpost
-		// Runnableインタフェースを使ってスレッドを作成、開始
-		// Threadをサブクラス化しなくても実行できる
-		handler.post(new Runnable() {
-			@Override
-			public void run() {
-				switch(received_type){
-				case 0:
-					editText.append("通信相手からのメッセージ");
-					break;
-				case 1:
-					editText.append("RREQ");
-					break;
-				case 2:
-					editText.append("RREP");
-					break;
-				}
-				editText.append("を受信しました\n");
-
-				editText.append("宛先IPアドレス:" + received_destination_address + "\n");
-				editText.append("送信元IPアドレス:" + received_src_address + "\n");
-				
-				//if(isToMe){
-				//	editText.append("宛先アドレスはこの端末です\n");
-				//}
-				//else{
-				//	editText.append("宛先アドレスはこの端末ではありません\n");
-				//}
-				editText.append("\n");
-				//editText.append(s.toString());
-				//editText.setSelection(s.length());
-			}
-		});
-	}
 	
 	// バイト配列の取り出し（余分な部分の削除）
 	byte[] cut_byte_spare(byte[] b,int size){
@@ -523,7 +475,7 @@ public class UdpListener implements Runnable {
 		return message;
 	}
 	
-	// メッセージ0をそのまま宛先へ転送
+	// メッセージ0を宛先へ転送
 	void sendMessage(byte[] receiveBuffer,byte[] destination_address){
 		
 		// データグラムソケットを開く

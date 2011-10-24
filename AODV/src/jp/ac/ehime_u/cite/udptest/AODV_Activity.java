@@ -1,9 +1,6 @@
 package jp.ac.ehime_u.cite.udptest;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -23,16 +20,17 @@ import java.util.TimerTask;
 
 import android.app.Activity;
 import android.content.Context;
-import android.graphics.Canvas;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.Display;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.TextView;
 
 public class AODV_Activity extends Activity {
 
@@ -43,6 +41,9 @@ public class AODV_Activity extends Activity {
 	private EditText editTextDest;
 	private EditText editTextDestPort;
 	private EditText editTextToBeSent;
+	
+	// Handler
+	public static Handler handler = new Handler();
 
 	// スレッド
 	private Thread udpListenerThread; // 受信スレッド
@@ -63,7 +64,7 @@ public class AODV_Activity extends Activity {
 	public static int RREQ_ID = 0;
 	public static int seqNum = 0;
 	public static boolean do_BroadCast = false; // 一定時間内に何かﾌﾞﾛｰﾄﾞｷｬｽﾄしたかどうか
-	public static int message_ID = 0;
+	
 
 	// 様々なパラメータのデフォルト値を宣言
 	public static final int ACTIVE_ROUTE_TIMEOUT = 3000; // [ms]
@@ -304,6 +305,7 @@ public class AODV_Activity extends Activity {
 			}
 		});
 		
+		
 		// ルートテーブル表示ボタン
 		Button buttonShowRouteTable = (Button) findViewById(R.id.buttonShowRouteTable);
 		
@@ -340,25 +342,67 @@ public class AODV_Activity extends Activity {
 		});
 	}
 	
+	// メニューの追加
+	public boolean onCreateOptionsMenu(Menu menu) {
+		boolean ret = super.onCreateOptionsMenu(menu);
+
+		menu.add(0 , Menu.FIRST , Menu.NONE 
+				, getString(R.string.menu_next)).setIcon(android.R.drawable.ic_menu_crop);
+		menu.add(0 , Menu.FIRST + 1 ,Menu.NONE 
+				, getString(R.string.menu_finish)).setIcon(android.R.drawable.ic_menu_close_clear_cancel);
+
+		return ret;
+	}
+	
+	// メニューが押されたとき
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+        
+        // ルートテーブルメニューが押されたとき
+        case Menu.FIRST:
+            //別のActivityを起動させる
+            Intent intent = new Intent();
+            intent.setClassName(
+                    "jp.ac.ehime_u.cite.udptest",
+                    "jp.ac.ehime_u.cite.udptest.RouteActivity");
+            startActivity(intent);
+            
+        	return true;
+        // 終了メニューが押されたとき
+        case Menu.FIRST + 1:
+        	
+            //Activity終了
+            finish();
+        	
+            return true;
+        default:
+            break;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+	
+	
 	// ログの表示用EditTextのサイズを画面サイズに合わせて動的に決定
 	// OnCreate()ではまだViewがレイアウトが初期化されていないため？
 	// Viewサイズなどの取得が不可
 	@Override
 	public void onWindowFocusChanged(boolean hasFocus) {
 		super.onWindowFocusChanged(hasFocus);
-
+		
 		// receivedのY座標を取得 * タイトルバー,ステータスバーの下が0扱い *
 		final EditText text_view_received = (EditText) findViewById(R.id.textViewReceived);
-		int received_top = text_view_received.getTop();
+		final int received_top = text_view_received.getTop();
 
 		// Clearのサイズを取得
 		final Button clear_button = (Button) findViewById(R.id.buttonClear);
-		int clear_height = clear_button.getHeight();
+		final int clear_height = clear_button.getHeight();
 
 		// 画面サイズを取得 *タイトルバー,ステータスバー含む*
 		WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
 		Display display = wm.getDefaultDisplay();
-		int display_height = display.getHeight();
+		final int display_height = display.getHeight();
 
 		// タイトル+ステータスバーのサイズを50と仮定、不完全な動的決定
 		text_view_received.setHeight(display_height - received_top
@@ -488,9 +532,6 @@ public class AODV_Activity extends Activity {
 		// Byte列化
 		byte[] buffer = string_to_be_sent.getBytes();
 		
-		// メッセージIDをインクリメント
-		message_ID++;
-
 		// メッセージタイプ0,宛先アドレス,送信元アドレス,メッセージIDを先頭に付加
 		buffer = addMessageType(buffer, destination_address_b, source_address_b);
 

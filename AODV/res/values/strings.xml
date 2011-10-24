@@ -2,4 +2,9 @@
 <resources>
     <string name="hello">Hello World, UdpTestActivity!</string>
     <string name="app_name">UdpTest</string>
+    
+    <string name="menu_main">送信画面</string>
+    <string name="menu_next">ルートテーブル</string>
+    <string name="menu_finish">Activity終了</string>
+   
 </resources>
