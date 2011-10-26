@@ -7,19 +7,18 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 public class DatabaseOpenHelper extends SQLiteOpenHelper {
 	// データベース名
-	private static final String DB_NAME = "MEMBER";
+	private static final String DB_NAME = "ROUTE_TABLE";
 	// テーブル名
-	public static final String TABLE_NAME = "member";
+	public static final String TABLE_NAME = "route";
 	// カラム名
 	public static final String COLUMN_ID = "_id";
-	public static final String COLUMN_NAME = "name";
-	public static final String COLUMN_POSITION = "position";
-	public static final String COLUMN_NUMBER = "number";
-
-	// 初期投入サンプルデータ
-	private String[][] datas = new String[][] { { "山田太郎", "捕手", "2" },
-			{ "岩鬼正美", "三塁手", "5" }, { "里中智", "投手", "1" },
-			{ "殿馬一人", "二塁手", "4" }, { "微笑三太郎", "外野手", "7" } };
+	public static final String COLUMN_IP_1 = "AddressPart1";
+	public static final String COLUMN_IP_2 = "AddressPart2";
+	public static final String COLUMN_IP_3 = "AddressPart3";
+	public static final String COLUMN_IP_4 = "AddressPart4";
+	public static final String COLUMN_HOP_COUNT = "HopCount";
+	public static final String COLUMN_LifeTime = "LifeTime";
+	public static final String COLUMN_CAN_USE = "CanUse";
 
 	/** * コンストラクタ */
 	public DatabaseOpenHelper(Context context) {
@@ -38,9 +37,13 @@ public class DatabaseOpenHelper extends SQLiteOpenHelper {
 			createSql.append("create table " + TABLE_NAME + " (");
 			createSql.append(COLUMN_ID + " integer primary key,");
 			
-			createSql.append(COLUMN_NAME + " text,");
-			createSql.append(COLUMN_POSITION + " text,");
-			createSql.append(COLUMN_NUMBER + " text");
+			createSql.append(COLUMN_IP_1 + " integer not null,");
+			createSql.append(COLUMN_IP_2 + " integer not null,");
+			createSql.append(COLUMN_IP_3 + " integer not null,");
+			createSql.append(COLUMN_IP_4 + " integer not null,");
+			createSql.append(COLUMN_HOP_COUNT + " integer not null,");
+			createSql.append(COLUMN_LifeTime + " integer not null,");
+			createSql.append(COLUMN_CAN_USE + " text not null");
 			createSql.append(")");
 			
 			db.execSQL(createSql.toString());
@@ -48,21 +51,8 @@ public class DatabaseOpenHelper extends SQLiteOpenHelper {
 		} finally {
 			db.endTransaction();
 		}
-		// サンプルデータの投入
-		db.beginTransaction();
-		try {
-			for (String[] data : datas) {
-				ContentValues values = new ContentValues();
-				values.put(COLUMN_NAME, data[0]);
-				values.put(COLUMN_POSITION, data[1]);
-				values.put(COLUMN_NUMBER, data[2]);
-				db.insert(TABLE_NAME, null, values);
-			}
-			db.setTransactionSuccessful();
-		} finally {
-			db.endTransaction();
-		}
 	}
+	
 	
 	// データベースの更新 
 	@Override 

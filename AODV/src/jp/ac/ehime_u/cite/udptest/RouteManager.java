@@ -35,7 +35,7 @@ public class RouteManager implements Runnable {
 			
 			// 経路が存在するならば
 			if(AODV_Activity.routeTable.isEmpty() != true){
-				
+
 				int port = Integer.parseInt(textDestPort.getText().toString());
 				
 				// 経路を維持するHELLOメッセージの送信
@@ -57,7 +57,7 @@ public class RouteManager implements Runnable {
 					route = AODV_Activity.getRoute(i);
 					
 					// 無効経路が削除される時間であるか
-					if( (route.lifeTime+AODV_Activity.DELETE_PERIOD) < new Date().getTime()){
+					if( (route.stateFlag!=1) && (route.lifeTime < new Date().getTime())){
 						
 						// 無効経路の削除
 						AODV_Activity.removeRoute(i);

@@ -38,17 +38,14 @@ public class AODV_Activity extends Activity {
 	// EditTextクラス(ip入力やボタン押下などユーザーの入力を処理するため)
 	private EditText editTextSrc;
 	private EditText editTextSrcPort;
-	private EditText editTextDest;
+	static EditText editTextDest;
 	private EditText editTextDestPort;
 	private EditText editTextToBeSent;
 	
-	// Handler
-	public static Handler handler = new Handler();
-
 	// スレッド
 	private Thread udpListenerThread; // 受信スレッド
 	private Thread routeManagerThread; // ルート監視スレッド
-
+	
 	// ルートテーブル
 	public static ArrayList<RouteTable> routeTable = new ArrayList<RouteTable>();
 
@@ -438,13 +435,21 @@ public class AODV_Activity extends Activity {
 		synchronized (routeLock) {
 			routeTable.add(route);
 		}
+//		if(RunRouteActivity){
+//			RouteActivity.addRoute_sql(route.toIpAdd, route.hopCount
+//					, route.lifeTime - new Date().getTime(), route.stateFlag);
+//		}
 	}
 
 	// ルートテーブルの要素を削除する、排他制御
 	public static void removeRoute(int index) {
+//		if(RunRouteActivity){
+//			RouteActivity.removeRoute_sql(getRoute(index).toIpAdd);
+//		}
 		synchronized (routeLock) {
 			routeTable.remove(index);
 		}
+
 	}
 
 	// ルートテーブルの要素を上書きする、排他制御
@@ -452,6 +457,9 @@ public class AODV_Activity extends Activity {
 		synchronized (routeLock) {
 			routeTable.set(index, route);
 		}
+//		if(RunRouteActivity){
+//			RouteActivity.setRoute_sql();
+//		}
 	}
 
 	// RouteTable(list)に宛先アドレス(Add)が含まれていないか検索する

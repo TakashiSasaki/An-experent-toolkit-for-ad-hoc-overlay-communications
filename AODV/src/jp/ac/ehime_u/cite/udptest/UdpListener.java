@@ -141,7 +141,7 @@ public class UdpListener implements Runnable {
         			// 受信履歴リストの中の情報と、RREQ_ID,送信元が一致すればメッセージを無視
         			if( AODV_Activity.RREQ_ContainCheck( RReq.getRREQ_ID(receiveBuffer), RReq.getFromIpAdd(receiveBuffer))){
         				// "重複したRREQメッセージのため無視します\n");
-        				//continue label;
+        				continue label;
         			}
         			
         			// ホップ数+1,
