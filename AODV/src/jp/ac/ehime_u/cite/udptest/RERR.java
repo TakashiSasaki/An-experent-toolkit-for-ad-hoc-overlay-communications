@@ -46,7 +46,7 @@ public class RERR {
         // UDPパケットを送信する先となる前ホップノードのアドレス
         InetSocketAddress remoteAddress = null;
 		try {
-			remoteAddress = new InetSocketAddress(InetAddress.getByAddress(atesaki), port);
+			remoteAddress = new InetSocketAddress(InetAddress.getByAddress(atesaki).getHostAddress(), port);
 		} catch (UnknownHostException e) {
 			// TODO 自動生成された catch ブロック
 			e.printStackTrace();

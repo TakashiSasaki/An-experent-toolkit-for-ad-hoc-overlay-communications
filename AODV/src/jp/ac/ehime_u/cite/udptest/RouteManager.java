@@ -70,12 +70,16 @@ public class RouteManager implements Runnable {
 					else if( (route.stateFlag==1) && (route.lifeTime < new Date().getTime())){
 						
 						// 無効化
-						route.stateFlag = 2;
-						route.lifeTime  = (new Date().getTime()+AODV_Activity.DELETE_PERIOD);
-						route.toSeqNum++;
+						//route.stateFlag = 2;
+						//route.lifeTime  = (new Date().getTime()+AODV_Activity.DELETE_PERIOD);
+						//route.toSeqNum++;
 						
 						// 上書き
-						AODV_Activity.setRoute(i, route);
+						//AODV_Activity.setRoute(i, route);
+						
+						// 無効経路の削除 ###
+						AODV_Activity.removeRoute(i);
+						i--;
 						
 						// ローカルリペアを行えるホップ数か？
 						if(route.hopCount <= AODV_Activity.MAX_REPAIR_TTL){

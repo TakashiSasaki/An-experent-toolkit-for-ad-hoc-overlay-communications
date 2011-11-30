@@ -74,7 +74,7 @@ public class RREP {
 		
         // UDPパケットを送信する先となる前ホップノードのアドレス
         InetSocketAddress remoteAddress =
-        			 new InetSocketAddress(str, port);
+        			 new InetSocketAddress(str.getHostAddress(), port);
         
         // UDPパケット
         DatagramPacket sendPacket = null;
@@ -87,7 +87,7 @@ public class RREP {
         
         // DatagramSocketインスタンスを生成して、UDPパケットを送信
         try {
-			new DatagramSocket().send(sendPacket);
+			soc.send(sendPacket);
 		} catch (SocketException e) {
 			// TODO 自動生成された catch ブロック
 			e.printStackTrace();
@@ -126,7 +126,7 @@ public class RREP {
 		
 	    // UDPパケットを送信する先となるアドレス
 	    InetSocketAddress remoteAddress =
-	    			 new InetSocketAddress(lastNODE, port);
+	    			 new InetSocketAddress(lastNODE.getHostAddress(), port);
 	    
 	    // UDPパケット
 	    DatagramPacket sendPacket = null;
