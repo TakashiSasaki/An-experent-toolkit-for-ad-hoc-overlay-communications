@@ -163,11 +163,15 @@ public class FSEND {
 	
 	// メッセージの中から、ファイルデータを抜き出す
 	byte[] getFileData(byte[] receiveBuffer,int file_name_length,int length){
+		
+		// データ長 *フォーマット依存
+		int data_length = length-21-file_name_length;
+		
 		// 数値のコピー先を作成
-		byte[] file_data = new byte[length];
+		byte[] file_data = new byte[data_length];
 		
 		// 該当部分を抜き出し
-		System.arraycopy(receiveBuffer, 21+file_name_length, file_data, 0, length);
+		System.arraycopy(receiveBuffer, 21+file_name_length, file_data, 0, data_length);
 		
 		return file_data;
 	}

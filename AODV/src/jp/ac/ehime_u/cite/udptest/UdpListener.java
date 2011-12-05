@@ -80,7 +80,7 @@ public class UdpListener implements Runnable {
 				socket.receive(packet); // blocking
 				
 				// 受信したデータを抽出	received_dataをreceiveBufferに変更したよ
-				byte[] receiveBuffer = packet.getData();//cut_byte_spare(packet.getData() ,packet.getLength());
+				byte[] receiveBuffer = cut_byte_spare(packet.getData() ,packet.getLength());
 				
 				//前ホップのノードのアドレスを取得
 		    	InetAddress cAddr = packet.getAddress();
@@ -106,25 +106,24 @@ public class UdpListener implements Runnable {
 				//}
 				// ↑アドレス拒否
 				
-				Log.d("debug_0","type:"+receiveBuffer[0]);
+				// Log.d("debug_0","type:"+receiveBuffer[0]);
 				
 	        	switch( receiveBuffer[0] ){
 	        	case 0: // 通信相手からのメッセージ
-        			Log.d("debug_0","receive0");
+        			Log.d("AODV_type0","receive0");
 	        		// 自分宛のメッセージなら
 	        		if( isToMe(receiveBuffer,my_address)){	// 出力 "送信元:テキスト"を追加
 	        			
-	        			Log.d("debug_0","forMe");
+	        			Log.d("AODV_type0","To_me_message");
 	        			final String s = AODV_Activity.getStringByByteAddress(getAddressSrc(receiveBuffer))
 	        				+ ":" + new String(getMessage(receiveBuffer, packet.getLength()));
 	        			
-	        			final String s2= "prev_hop_is:"+AODV_Activity.getStringByByteAddress(cAddr.getAddress());
+	        			// final String s2= "prev_hop_is:"+AODV_Activity.getStringByByteAddress(cAddr.getAddress());
 	        			
 	    				handler.post(new Runnable() {
 	    					@Override
 	    					public void run() {
 	    						editText.append(s+"\n\r");
-	    						editText.append(s2+"\n\r");
 	    						editText.setSelection(editText.getText().toString().length());
 	    					}
 	    				});
@@ -133,29 +132,24 @@ public class UdpListener implements Runnable {
 	        			// 宛先までの有効経路を持っているか検索
         				int index = AODV_Activity.searchToAdd(getAddressDest(receiveBuffer));
         				
-        				Log.d("debug_3", "receive");
+        				Log.d("AODV_type0", "deliver_message");
         				
         				// 経路を知っていて
         				if(index != -1){
         					// 有効な経路なら
         					if(AODV_Activity.getRoute(index).stateFlag == 1){
         						
-        						Log.d("debug_3", "delivery_start");
+        						Log.d("AODV_type0", "delivery_start");
         						// 次ホップへそのまま転送
         						sendMessage(cut_byte_spare(receiveBuffer,packet.getLength()), AODV_Activity.getRoute(index).nextIpAdd);
-        	    				handler.post(new Runnable() {
-        	    					@Override
-        	    					public void run() {
-        	    						editText.append("delivery_Message0\n\r");
-        	    					}
-        	    				});
-        	    				Log.d("debug_3", "delivery_end");
+        	    				
+        	    				Log.d("AODV_type0", "delivery_end");
         						break;
         					}
         				}
         				// 有効な経路を持っていない場合
 
-						// RERRの送信?
+						// RERRの送信
 						RouteManager.RERR_Sender(AODV_Activity.getRoute(index),port);
         				
 	        		}
@@ -163,6 +157,7 @@ public class UdpListener implements Runnable {
 	        		break;
 	        		
         		case 1:	// RREQ
+        			
         			
         			// RREQの受信履歴の中で、古すぎるアドレスの削除
         			if( !AODV_Activity.receiveRREQ_List.isEmpty() ){	// 空でなければ
@@ -173,8 +168,6 @@ public class UdpListener implements Runnable {
         					}
         				}
         			}
-        			
-        			
         			
         			// 受信履歴リストの中の情報と、RREQ_ID,送信元が一致すればメッセージを無視
         			if( AODV_Activity.RREQ_ContainCheck( RReq.getRREQ_ID(receiveBuffer), RReq.getFromIpAdd(receiveBuffer))){
@@ -211,7 +204,9 @@ public class UdpListener implements Runnable {
             				receiveBuffer = RReq.setFromSeqNum(receiveBuffer, AODV_Activity.getRoute(index).toSeqNum);
         				}
         			}
-
+        			
+        			Log.d("AODV_type1","\t逆経路作成:"+AODV_Activity.getStringByByteAddress(RReq.getFromIpAdd(receiveBuffer))+
+        					"宛"+"("+AODV_Activity.getStringByByteAddress(cAddr.getAddress())+"経由)\n");
         			// 既に逆経路があるなら上書きset、なければ追加add
         			if(index != -1){
         				AODV_Activity.setRoute(index, new RouteTable( RReq.getFromIpAdd(receiveBuffer), RReq.getFromSeqNum(receiveBuffer)
@@ -227,7 +222,7 @@ public class UdpListener implements Runnable {
         			// RREQメッセージの内容チェック
         			if(RReq.isToMe(receiveBuffer, my_address)){
         				// RREQ:自分宛のメッセージです
-        				// RREPを前ホップノード" + cAddr.getHostAddress() + "にユニキャストします");
+        				Log.d("AODV_type1","RREPを前ホップノード" + cAddr.getHostAddress() + "にユニキャストします");
         				
         				// 返信前に、シーケンス番号の更新
         				if( RReq.getToSeqNum(receiveBuffer) == AODV_Activity.seqNum+1){
@@ -240,7 +235,7 @@ public class UdpListener implements Runnable {
         				
         			}
         			else{
-        				// RREQ:自分宛のメッセージではありません");
+        				Log.d("AODV_type1", "RREQ:自分宛のメッセージではありません");
         				
         				// 宛先までの有効経路を持っているか検索
         				index = AODV_Activity.searchToAdd(RReq.getToIpAdd(receiveBuffer));
@@ -252,7 +247,7 @@ public class UdpListener implements Runnable {
         							&& !RReq.getFlagD(receiveBuffer)){
 
 	        					// 経路が既知な中間ノードなので、RREPを返信");
-	        					
+        						
 	        					// Gフラグがセットされていれば、宛先ノードにもRREPが必要
 	        					// (双方向に経路を確立するために用いる)
 	        					if(RReq.getFlagG(receiveBuffer)){
@@ -289,20 +284,19 @@ public class UdpListener implements Runnable {
 	        							AODV_Activity.getRoute(index).hopCount, AODV_Activity.getRoute(index).toSeqNum,
 	        							(int)(AODV_Activity.getRoute(index).lifeTime - new Date().getTime()));
 	        					
-	        					continue label;
         					}
         				}
-        				// (else 上記if(true)のときはcontinueで通らない)
         				// =宛先までの有効経路を持っていない場合、または持っていてDフラグがオンの場合
-        				{
+        				else{
         					// TTLを減らすタイミングはこの後にしているので、比較は1以下
         					// 順番変えても別にいい気もする
         					if(RReq.getTimeToLive(receiveBuffer)<=1){
-        						// "TTLが0以下なので転送しません");
+        						Log.d("AODV_type1","TTLが0以下なので転送しません");
         					}
         					else{
         						// 条件を満たせば、中継するためブロードキャスト
         						// 引数のTTL--;
+        						Log.d("AODV_type1","RREQメッセージを転送");
         						receiveBuffer = RReq.setTimeToLive(receiveBuffer, RReq.getTimeToLive(receiveBuffer)-1);
         						
         						RReq.send2(receiveBuffer,port);
@@ -314,6 +308,7 @@ public class UdpListener implements Runnable {
         			
         		case 2:	//RREPを受け取った場合
         			
+        			
         			// 受信データのサイズ
         			int mesLength = packet.getLength();
         			
@@ -324,6 +319,7 @@ public class UdpListener implements Runnable {
         					|| Arrays.equals(RRep.getToIpAdd(receiveBuffer,mesLength), my_address)){
         				continue label;
         			}
+        			
         			
         			// ホップ数++
         			receiveBuffer = RRep.hopCountInc(receiveBuffer, mesLength);
@@ -364,19 +360,26 @@ public class UdpListener implements Runnable {
     				
     				// さらに、RREPを送信してきた前ノードが
     				// 何かの経路の次ホップなら、その経路の生存時間を更新
+    				// （経路の状態が有効または無効のとき）
     				for(int i=0;i<AODV_Activity.routeTable.size();i++){
-    					if( Arrays.equals((AODV_Activity.getRoute(i).nextIpAdd) , cAddr.getAddress())){
-    						RouteTable route = AODV_Activity.getRoute(i);
+    					RouteTable route = AODV_Activity.getRoute(i);
+    					if( Arrays.equals((route.nextIpAdd) , cAddr.getAddress())
+    							&& (route.stateFlag == 0 || route.stateFlag == 1)){
+    						
     						// 現在の生存時間と、HELLOの式を比較して大きい方に更新
     						if(route.lifeTime < (AODV_Activity.ALLOWED_HELLO_LOSS * AODV_Activity.HELLO_INTERVAL)){
     							route.lifeTime = AODV_Activity.ALLOWED_HELLO_LOSS * AODV_Activity.HELLO_INTERVAL;
     						}
+    						// 状態を有効に
+    						route.stateFlag = 1;
+    						
+    						// 上書き
+    						AODV_Activity.setRoute(i,route);
     					}
     				}
         			
         			if(RRep.isToMe(receiveBuffer,mesLength,my_address)){
         				// RREP:送信元ＩＰアドレスが自分です
-        				
         			}
         			else{
         				// RREP:送信元ＩＰアドレスが自分ではありません
@@ -461,14 +464,17 @@ public class UdpListener implements Runnable {
 	        			int file_name_length = FSend.getFileNameLength(receiveBuffer);	// ファイル名(byte)の長さ
 	        			final String file_name = FSend.getFileName(receiveBuffer, file_name_length);	// ファイル名
 	        			
+	        			Log.d("debug_FSEND", "receive"+packet_seq+"/"+packet_total+":"+file_name);
+	        			
 	        			// 最初のパケットならファイルオープン
-	        			if(packet_seq == 1){
+	        			if(packet_seq == 1 && file == null){
 		    				try {
 		    					file = AODV_Activity.context.openFileOutput(file_name, 
 		    							AODV_Activity.context.MODE_WORLD_READABLE 
 		    							| AODV_Activity.context.MODE_WORLD_WRITEABLE);
 		    					
 		    					out = new BufferedOutputStream(file);
+		    					receive_file_next_no = 1;
 							} catch (FileNotFoundException e) {
 								e.printStackTrace();
 							}
@@ -476,6 +482,7 @@ public class UdpListener implements Runnable {
 	        			
 	        			// 正しい順序で受信したならファイルにデータを書き込む
 	        			if(packet_seq == receive_file_next_no){
+	        				Log.d("debug_FSEND", "this_written");
 	        				out.write(FSend.getFileData(receiveBuffer, file_name_length, packet.getLength()));
 	        				
 	        				receive_file_next_no++;
@@ -485,21 +492,20 @@ public class UdpListener implements Runnable {
 					    			@Override
 					    			public void run() {
 					    				// 10%ごとに経過を出力
-					    				
 					    				editText.append(file_name+":\t"+((packet_seq*100)/packet_total)+"% received\n");
 					    				editText.setSelection(editText.getText().toString().length());
-					    				
 					    			}
 			    				});
 	        				}
 	        			}
-	        				
+	        			
 	        			// 次のパケットを送信元に要求
 	        			// 最終パケット受信後でも終了通知のために必要
-	        			FReq.file_req(cAddr, my_address, FSend.getAddressSrc(receiveBuffer), receive_file_next_no, file_name, port);
+			    		if(file != null)
+			    			FReq.file_req(cAddr, my_address, FSend.getAddressSrc(receiveBuffer), receive_file_next_no, file_name, port);
 	        				
 	        			// さらに、受信パケットが最後のパケットならデータ書き込みを終了
-	        			if(packet_seq == packet_total){
+	        			if(receive_file_next_no > packet_total){
 	        				out.flush();
 		    				out.close();
 		    				file.close();
@@ -544,7 +550,7 @@ public class UdpListener implements Runnable {
 	        			
         				// 経路を知っていて
         				if(index1 != -1){
-        					RouteTable route = AODV_Activity.getRoute(index1);
+        					final RouteTable route = AODV_Activity.getRoute(index1);
         					
         					// 有効な経路なら
         					if(route.stateFlag == 1){
@@ -575,7 +581,92 @@ public class UdpListener implements Runnable {
         								files.fileSend(my_address, route.nextIpAdd, port);
         								
         								// 経過を上書き
+        								files.set();
         								
+        								// 再送処理
+        								final FileManager f_copy = files;
+        								
+        								try {
+        									new Thread(new Runnable() {
+        										
+        										int wait_time = 2 * AODV_Activity.NODE_TRAVERSAL_TIME
+        											* (route.hopCount + AODV_Activity.TIMEOUT_BUFFER);
+        										int resend_count = 0;
+        										int prev_step = f_copy.file_next_no;
+        										byte[] buffer = f_copy.buffer;
+        										byte[] destination_next_hop_address_b = route.nextIpAdd;
+        										int port_ = port;
+        										String file_name = f_copy.file_name;
+        										byte[] destination_address = f_copy.destination_address;
+        										
+        										// 再送処理
+        										public void run() {
+        											timer: while (true) {
+        												
+//        												handler.post(new Runnable() {
+//        													public void run() {
+        														
+        														// 送信try
+        														try {
+        															// 次ホップをルートテーブルから参照
+        															InetAddress next_hop_Inet = null;
+        															try {
+        																next_hop_Inet = InetAddress
+        																		.getByAddress(destination_next_hop_address_b);
+        															} catch (UnknownHostException e1) {
+        																e1.printStackTrace();
+        															}
+
+        															// 送信先情報
+        															InetSocketAddress destination_inet_socket_address = new InetSocketAddress(
+        																	next_hop_Inet.getHostAddress(), port);
+        															
+        															// 送信パケットの生成
+        															DatagramPacket packet_to_be_sent = new DatagramPacket(
+        																	buffer, buffer.length,
+        																	destination_inet_socket_address);
+        															// 送信用のクラスを生成、送信、クローズ
+        															DatagramSocket datagram_socket = new DatagramSocket();
+        															datagram_socket.send(packet_to_be_sent);
+        															datagram_socket.close();
+        														} catch (SocketException e1) {
+        															e1.printStackTrace();
+        														} catch (IOException e1) {
+        															e1.printStackTrace();
+        														}
+        														
+//        													}
+        													
+//        												});
+        												// 指定の時間停止する
+        												try {
+        													Thread.sleep(wait_time);
+        												} catch (InterruptedException e) {
+        												}
+        												
+        												resend_count++;
+        												
+        												// ループを抜ける処理
+        												if (resend_count == AODV_Activity.MAX_RESEND) {
+        													break timer;
+        												}
+        												FileManager files = AODV_Activity.searchProgress(file_name, destination_address);
+        												if(files == null){
+        													break timer;
+        												}
+        												else{
+        													if( files.file_next_no != prev_step){
+        														break timer;
+        													}
+        												}
+        												
+        											}
+        										}
+        									}).start();
+
+        								} catch (Exception e) {
+        									e.printStackTrace();
+        								}
         							}
         						}
         						
