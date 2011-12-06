@@ -55,9 +55,10 @@ public class RouteManager implements Runnable {
 				for(int i=0;i<AODV_Activity.routeTable.size();i++){
 					
 					route = AODV_Activity.getRoute(i);
+					long now = new Date().getTime();
 					
-					// 無効経路が削除される時間であるか
-					if( (route.stateFlag!=1) && (route.lifeTime < new Date().getTime())){
+					// 有効でない経路が削除される時間であるか
+					if( (route.stateFlag != 1) && (route.lifeTime < now)){
 						
 						// 無効経路の削除
 						AODV_Activity.removeRoute(i);
@@ -67,11 +68,11 @@ public class RouteManager implements Runnable {
 					}
 					
 					// 有効経路が無効経路になる時間（寿命）であるか
-					else if( (route.stateFlag==1) && (route.lifeTime < new Date().getTime())){
+					else if( (route.stateFlag == 1) && (route.lifeTime < now)){
 						
 						// 無効化
 						route.stateFlag = 2;
-						route.lifeTime  = (new Date().getTime()+AODV_Activity.DELETE_PERIOD);
+						route.lifeTime  = (now+AODV_Activity.DELETE_PERIOD);
 						route.toSeqNum++;
 						
 						// 上書き
@@ -84,6 +85,14 @@ public class RouteManager implements Runnable {
 						else{
 							// RERRの送信
 							RERR_Sender(route,port);
+							
+							final byte[] destination_address = route.toIpAdd;
+		    				handler.post(new Runnable() {
+		    					@Override
+		    					public void run() {
+		    						text_view_received.append(AODV_Activity.getStringByByteAddress(destination_address)+" disconnected\n");
+		    					}
+		    				});
 						}
 					}
 				}
@@ -137,18 +146,19 @@ public class RouteManager implements Runnable {
 					// それ以外の場合、RERRを送信する
 					if(index == -1){
 						RERR_Sender(route_f,port);
+						
+						final byte[] destination_address = route_f.toIpAdd;
+	    				handler.post(new Runnable() {
+	    					@Override
+	    					public void run() {
+	    						text_view_received.append(AODV_Activity.getStringByByteAddress(destination_address)+" disconnected\n");
+	    					}
+	    				});
 					}
 					else{
+						// ホップ数が増加した場合
 						if(AODV_Activity.getRoute(index).hopCount > route_f.hopCount){
 							RERR_Sender(route_f,port);
-							
-							final byte[] destination_address = route_f.toIpAdd;
-		    				handler.post(new Runnable() {
-		    					@Override
-		    					public void run() {
-		    						text_view_received.append("Route[To:"+AODV_Activity.getStringByByteAddress(destination_address)+"] cannot use\n");
-		    					}
-		    				});
 						}
 					}
 				}

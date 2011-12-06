@@ -8,7 +8,7 @@ public class RouteTable {
 	byte[] toIpAdd;	// 宛先IPアドレス
 	int toSeqNum;	// 宛先シーケンス番号
 	boolean validToSeqNumFlag;	// 有効宛先シーケンス番号フラグ
-	byte stateFlag;		// 他の状態フラグ（有効1,無効2,修復可能3,修復中4)
+	byte stateFlag;		// 他の状態フラグ（有効1,無効2,修復可能3,修復中4,一時的5)
 	
 	// ### ネットワークインタフェース ###
 	// ？？？

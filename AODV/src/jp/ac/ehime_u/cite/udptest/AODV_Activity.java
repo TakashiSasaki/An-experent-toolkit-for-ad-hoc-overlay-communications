@@ -99,6 +99,7 @@ public class AODV_Activity extends Activity {
 	public static final int PERR_RATELIMIT = 10;
 	public static final int RREQ_RETRIES = 2;
 	public static final int RREQ_RATELIMIT = 10;
+	public static final int BLACKLIST_TIMEOUT = RREQ_RETRIES * NET_TRAVERSAL_TIME;
 	public static final int TIMEOUT_BUFFER = 2;
 	public static final int TTL_START = 1;
 	public static final int TTL_INCREMENT = 2;

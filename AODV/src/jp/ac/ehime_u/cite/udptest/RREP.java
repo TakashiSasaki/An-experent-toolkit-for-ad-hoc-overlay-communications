@@ -36,7 +36,7 @@ public class RREP {
 		
 		// 各フィールドの初期化
 		type = 2;	// RREPを示す
-		flag = 0;	// 各フラグを0
+		flag = 2<<5;	// Rフラグを0,Aフラグを1
 		reserved_prefix = 0;
 		newHopCount = hopNum;
 		
@@ -100,6 +100,43 @@ public class RREP {
         	
         //データグラムソケットを閉じる
         soc.close();
+		
+        final byte[] next_hop_address = str.getAddress();
+        
+        // ACK要求リストに次ホップノードを追加
+        UdpListener.ack_demand_list.add(next_hop_address);
+        
+		// 一定時間後、RREP_ACKが戻ってこなければ片方向リンクと見なし
+		// BlackListにノードを追加する
+		// BlackListに含まれる時間はExpanding_Ring_Searchが終わるまで
+		try {
+			
+			new Thread(new Runnable() {
+				public void run() {
+					// 一定時間停止する
+					try {
+						Thread.sleep(2 * AODV_Activity.NODE_TRAVERSAL_TIME
+								* (1 + AODV_Activity.TIMEOUT_BUFFER));
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					
+					// ack_demand_listに停止前に追加したアドレスが存在すれば
+					// RREP_ACKが戻ってきていないことを示す
+					if(UdpListener.ack_demand_list.contains(next_hop_address)){
+						// 片方向であることを示すBlackListに追加
+						UdpListener.black_list.add(new BlackData(next_hop_address,
+								new Date().getTime() + AODV_Activity.BLACKLIST_TIMEOUT));
+					}
+					
+					// 要求リストから消しておく
+					UdpListener.ack_demand_list.remove(next_hop_address);
+				}
+			}).start();
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 	
 	// RREPメッセージの送信（フラグ指定用のオーバーロード ###）
@@ -153,7 +190,43 @@ public class RREP {
 	    //データグラムソケットを閉じる
 	    soc.close();
 	    
+        final byte[] next_hop_address = lastNODE.getAddress();
+        
+        // ACK要求リストに次ホップノードを追加
+        UdpListener.ack_demand_list.add(next_hop_address);
+        
+		// 一定時間後、RREP_ACKが戻ってこなければ片方向リンクと見なし
+		// BlackListにノードを追加する
+		// BlackListに含まれる時間はExpanding_Ring_Searchが終わるまで
+		try {
+			
+			new Thread(new Runnable() {
+				public void run() {
+					// 一定時間停止する
+					try {
+						Thread.sleep(2 * AODV_Activity.NODE_TRAVERSAL_TIME
+								* (1 + AODV_Activity.TIMEOUT_BUFFER));
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+					
+					// ack_demand_listに停止前に追加したアドレスが存在すれば
+					// RREP_ACKが戻ってきていないことを示す
+					if(UdpListener.ack_demand_list.contains(next_hop_address)){
+						// 片方向であることを示すBlackListに追加
+						UdpListener.black_list.add(new BlackData(next_hop_address,
+								new Date().getTime() + AODV_Activity.BLACKLIST_TIMEOUT));
+					}
+					
+					// 要求リストから消しておく
+					UdpListener.ack_demand_list.remove(next_hop_address);
+				}
+			}).start();
+
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
+	}
 	
 	// HELLOメッセージの送信（TTL=1のRREP）
 	// 引数：シーケンス番号、生存時間
