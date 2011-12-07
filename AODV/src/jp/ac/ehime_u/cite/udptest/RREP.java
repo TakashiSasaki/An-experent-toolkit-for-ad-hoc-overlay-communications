@@ -288,6 +288,13 @@ public class RREP {
 				return true;
 		else return false;
 	}
+	
+	// HELLOメッセージかどうか調べる
+	public boolean isHelloMessage(int length){
+		if(length == 14)
+			return true;
+		return false;
+	}
 	// RREPメッセージからRフィールドを返す
 	public boolean getFlagR(byte[] RREPMes,int length){
 		// HELLO?

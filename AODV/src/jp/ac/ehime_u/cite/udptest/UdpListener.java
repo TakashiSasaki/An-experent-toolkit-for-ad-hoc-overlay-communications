@@ -368,6 +368,34 @@ public class UdpListener implements Runnable {
         			// ホップ数++
         			receiveBuffer = RRep.hopCountInc(receiveBuffer, mesLength);
         			
+        			
+    				// RREPを送信してきた前ノードが
+    				// 何かの経路の次ホップなら、その経路の生存時間を更新
+    				// （経路の状態が有効または無効のとき）
+    				for(int i=0;i<AODV_Activity.routeTable.size();i++){
+    					RouteTable route = AODV_Activity.getRoute(i);
+    					if( Arrays.equals((route.nextIpAdd) , cAddr.getAddress())
+    							&& (route.stateFlag == 1 || route.stateFlag == 2)){
+    						Log.d("AODV_RREP","LifeTime before:"+route.lifeTime);
+    						
+    						// 現在の生存時間と、HELLOの式を比較して大きい方に更新
+    						if(route.lifeTime < (AODV_Activity.ALLOWED_HELLO_LOSS * AODV_Activity.HELLO_INTERVAL)){
+    							route.lifeTime = AODV_Activity.ALLOWED_HELLO_LOSS * AODV_Activity.HELLO_INTERVAL;
+    						}
+    						// 状態を有効に
+    						route.stateFlag = 1;
+    						
+    						Log.d("AODV_RREP","LifeTime after:"+route.lifeTime);
+    						// 上書き
+    						AODV_Activity.setRoute(i,route);
+    					}
+    				}
+    				
+    				// HELLOメッセージなら生存時間を延長するだけでよい(片方向リンク対応)
+    				if(RRep.isHelloMessage(mesLength)){
+    					continue label;
+    				}
+        			
         			// 順経路（RREQ送信元⇒宛先）が存在するかどうか検索
     				int index2 = AODV_Activity.searchToAdd(RRep.getToIpAdd(receiveBuffer,mesLength));
     				
@@ -399,28 +427,6 @@ public class UdpListener implements Runnable {
 	        					, true, (byte)1, RRep.getHopCount(receiveBuffer,mesLength), cAddr.getAddress()
 	        					, RRep.getLifeTime(receiveBuffer,mesLength) + (new Date().getTime())
 	        					, new HashSet<byte[]>() ));
-    					}
-    				}
-    				
-    				// さらに、RREPを送信してきた前ノードが
-    				// 何かの経路の次ホップなら、その経路の生存時間を更新
-    				// （経路の状態が有効または無効のとき）
-    				for(int i=0;i<AODV_Activity.routeTable.size();i++){
-    					RouteTable route = AODV_Activity.getRoute(i);
-    					if( Arrays.equals((route.nextIpAdd) , cAddr.getAddress())
-    							&& (route.stateFlag == 1 || route.stateFlag == 2)){
-    						Log.d("AODV_RREP","LifeTime before:"+route.lifeTime);
-    						
-    						// 現在の生存時間と、HELLOの式を比較して大きい方に更新
-    						if(route.lifeTime < (AODV_Activity.ALLOWED_HELLO_LOSS * AODV_Activity.HELLO_INTERVAL)){
-    							route.lifeTime = AODV_Activity.ALLOWED_HELLO_LOSS * AODV_Activity.HELLO_INTERVAL;
-    						}
-    						// 状態を有効に
-    						route.stateFlag = 1;
-    						
-    						Log.d("AODV_RREP","LifeTime after:"+route.lifeTime);
-    						// 上書き
-    						AODV_Activity.setRoute(i,route);
     					}
     				}
         			
