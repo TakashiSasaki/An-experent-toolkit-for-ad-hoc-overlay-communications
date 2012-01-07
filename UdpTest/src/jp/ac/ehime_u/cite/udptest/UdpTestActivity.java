@@ -9,9 +9,12 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.Date;
+import java.util.Enumeration;
 
 import android.app.Activity;
 import android.content.Context;
@@ -62,6 +65,13 @@ public class UdpTestActivity extends Activity {
 		
 		Button buttonClear = (Button) findViewById(R.id.buttonClear);
 
+		try {
+			editTextSrc.setText(getIPAddress());
+		} catch (IOException e3) {
+			e3.printStackTrace();
+		}
+			editTextDest.setText("133.71.232.13");
+		
 		// 受信ログ用のTextView、同様にIDから取得
 		final EditText text_view_received = (EditText) findViewById(R.id.textViewReceived);
 		
@@ -76,8 +86,6 @@ public class UdpTestActivity extends Activity {
 		}
 		// 受信スレッドrun()
 		udpListenerThread.start();
-		
-		text_view_received.append("tessssssss");
 
 		// 送信Button、同様にIDから取得
 		Button buttonSend = (Button) findViewById(R.id.buttonSend);
@@ -87,6 +95,8 @@ public class UdpTestActivity extends Activity {
 		buttonSend.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
 
+				Log.d("UdpTest", "send_clicked");
+				
 				// editTextから送信先IP(String)、port(int)の取得
 				String destination_address = editTextDest.getText().toString();
 				int destination_port = Integer.parseInt(editTextDestPort
@@ -122,9 +132,6 @@ public class UdpTestActivity extends Activity {
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
-				
-				// 送信先IPをローカルファイルに保存
-				// save_ip_to_local(destination_address);
 			}
 		});
 
@@ -154,17 +161,24 @@ public class UdpTestActivity extends Activity {
 		text_view_received.setHeight(display_height-received_top-clear_height-50);
 	} 
 	
-	// 送信先IPをローカルファイルに保存
-	private void save_ip_to_local(String s){
-		
-		try{
-			OutputStream out = openFileOutput("ip.txt",MODE_APPEND|MODE_PRIVATE);
-			PrintWriter writer =
-				new PrintWriter(new OutputStreamWriter(out,"UTF-8"));
-			writer.append(s+"\n");
-			writer.close();
-		}catch(IOException e){
-			e.printStackTrace();
-		}
+	// 自身のIPアドレスを取得
+	public static String getIPAddress() throws IOException{
+	    Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+	        
+	    while(interfaces.hasMoreElements()){
+	        NetworkInterface network = interfaces.nextElement();
+	        Enumeration<InetAddress> addresses = network.getInetAddresses();
+	            
+	        while(addresses.hasMoreElements()){
+	            String address = addresses.nextElement().getHostAddress();
+	                
+	            //127.0.0.1と0.0.0.0以外のアドレスが見つかったらそれを返す
+	            if(!"127.0.0.1".equals(address) && !"0.0.0.0".equals(address)){
+	                return address;
+	            }
+	        }
+	    }
+	        
+	    return "127.0.0.1";
 	}
 }

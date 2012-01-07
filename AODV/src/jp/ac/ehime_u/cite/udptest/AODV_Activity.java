@@ -21,6 +21,7 @@ import java.net.InetSocketAddress;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -31,6 +32,8 @@ import java.util.TimerTask;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
@@ -51,13 +54,13 @@ public class AODV_Activity extends Activity {
 	private EditText editTextSrcPort;
 	static EditText editTextDest;
 	private EditText editTextDestPort;
-	private EditText editTextToBeSent;
+	private static EditText editTextToBeSent;
 	
 	public static Context context;
 	
 	// スレッド
-	private Thread udpListenerThread; // 受信スレッド
-	private Thread routeManagerThread; // ルート監視スレッド
+	private static Thread udpListenerThread; // 受信スレッド
+	private static Thread routeManagerThread; // ルート監視スレッド
 	public static boolean timer_stop = false;	//ExpandingRingSerchを終了するためのもの
 	
 	// ルートテーブル
@@ -71,6 +74,7 @@ public class AODV_Activity extends Activity {
 	public static Object routeLock = new Object();
 	public static Object pastDataLock = new Object();
 	public static Object fileManagerLock = new Object();
+	public static Object fileReceivedManagerLock = new Object();
 
 	// その他変数
 	public static int RREQ_ID = 0;
@@ -79,6 +83,10 @@ public class AODV_Activity extends Activity {
 	
 	// ファイル送信
 	public static ArrayList<FileManager> file_manager = new ArrayList<FileManager>();
+	
+	// インテントの多重処理制御
+	private static String prev_receive_package_name = null;
+	private static int prev_receive_intent_id = -1;
 
 	// 様々なパラメータのデフォルト値を宣言
 	public static final int ACTIVE_ROUTE_TIMEOUT = 3000; // [ms]
@@ -108,7 +116,8 @@ public class AODV_Activity extends Activity {
 	public static int RING_TRAVERSAL_TIME = 2 * NODE_TRAVERSAL_TIME
 			* (TTL_VALUE + TIMEOUT_BUFFER);
 	public static int MAX_SEND_FILE_SIZE = 63*1024;
-	public static int MAX_RESEND = 3;
+	public static int MAX_RESEND = 5;
+	public static String BLOAD_CAST_ADDRESS = "255.255.255.255";
 
 	/** Called when the activity is first created. */
 	@Override
@@ -124,6 +133,7 @@ public class AODV_Activity extends Activity {
 				WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
 
 		// アクティビティにビューグループを追加する
+		
 		setContentView(R.layout.main);
 
 		// IDに対応するViewを取得、型が異なるのでキャスト
@@ -132,40 +142,50 @@ public class AODV_Activity extends Activity {
 		editTextSrc = (EditText) findViewById(R.id.editTextSrc);
 		editTextSrcPort = (EditText) findViewById(R.id.editTextSrcPort);
 		editTextToBeSent = (EditText) findViewById(R.id.editTextToBeSent);
-
+		
 		try {
 			editTextSrc.setText(getIPAddress());
 		} catch (IOException e3) {
 			e3.printStackTrace();
 		}
-			editTextDest.setText("192.168.44.238");
+		
+		// 宛先の初期化？
+		editTextDest.setText("192.168.44.238");
+		
+
+		
 		
 		// 受信ログ用のTextView、同様にIDから取得
 		final EditText text_view_received = (EditText) findViewById(R.id.textViewReceived);
-
-		try {
-			// 受信スレッドのインスタンスを作成
-			UdpListener udp_listener = new UdpListener(new Handler(),
-					text_view_received, 12345, 100);
-			// スレッドを取得
-			udpListenerThread = new Thread(udp_listener);
-		} catch (SocketException e1) {
-			e1.printStackTrace();
+		
+		// スレッドが起動中でなければ
+		if( udpListenerThread == null ){
+			try {
+				// 受信スレッドのインスタンスを作成
+				UdpListener udp_listener = new UdpListener(new Handler(),
+						text_view_received, 12345, 100);
+				// スレッドを取得
+				udpListenerThread = new Thread(udp_listener);
+			} catch (SocketException e1) {
+				e1.printStackTrace();
+			}
+			// 受信スレッドrun()
+			udpListenerThread.start();
 		}
-		// 受信スレッドrun()
-		udpListenerThread.start();
-
-		// 経路監視スレッドのインスタンスを作成
-		try {
-			RouteManager route_manager = new RouteManager(new Handler(),
-					editTextDestPort,text_view_received);
-			// スレッドを取得
-			routeManagerThread = new Thread(route_manager);
-		} catch (IOException e2) {
-			e2.printStackTrace();
+		
+		if( routeManagerThread == null){
+			// 経路監視スレッドのインスタンスを作成
+			try {
+				RouteManager route_manager = new RouteManager(new Handler(),
+						editTextDestPort,text_view_received);
+				// スレッドを取得
+				routeManagerThread = new Thread(route_manager);
+			} catch (IOException e2) {
+				e2.printStackTrace();
+			}
+			// 監視スレッドrun()
+			routeManagerThread.start();
 		}
-		// 監視スレッドrun()
-		routeManagerThread.start();
 		
 		
 		// ファイルオープン、同様にIDから取得しクリックイベントを追加
@@ -174,21 +194,6 @@ public class AODV_Activity extends Activity {
 		buttonFileOpen.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
 				SelectFile();
-				
-//				try{
-//					InputStream in = openFileInput("timer.png");
-//					BufferedReader reader =
-//						new BufferedReader(new InputStreamReader(in,"UTF-8"));
-//					String s;
-//					EditText et = (EditText)findViewById(R.id.textViewReceived);
-//					while((s = reader.readLine())!= null){
-//						et.append(s);
-//						et.append("\n");
-//					}
-//					reader.close();
-//					}catch(IOException e){
-//					e.printStackTrace();
-//					}
 			}
 		});
 		
@@ -203,170 +208,50 @@ public class AODV_Activity extends Activity {
 		buttonSend.setOnClickListener(new View.OnClickListener() {
 			public void onClick(View v) {
 				
-				Log.d("debug", "Send__Start");
-
 				// editTextから送信先IP(String)、送信元(String)、port(int)の取得
 				String destination_address = editTextDest.getText().toString();	Log.d("eeeee",destination_address);
 				String source_address = editTextSrc.getText().toString();
 				final int destination_port = Integer.parseInt(editTextDestPort
 						.getText().toString());
-
-				// 送信先,送信元IPアドレスのbyte[]化
-				final byte[] destination_address_b = new RREQ()
-						.getByteAddress(destination_address);
 				
-				final byte[] source_address_b = new RREQ()
-				.getByteAddress(source_address);
-
+				byte[] destination_address_b = new RREQ().getByteAddress(destination_address);
+				byte[] source_address_b	= new RREQ().getByteAddress(source_address);
+				
 				// 送信先への経路が存在するかチェック
 				final int index = searchToAdd(destination_address_b);
 
 				// 経路が存在する場合、有効かどうかチェック
 				boolean enableRoute = false; // 初期化
-
+				
 				if (index != -1) {
 					if ( getRoute(index).stateFlag == 1 && 
 							(getRoute(index).lifeTime > new Date().getTime())) {
 						enableRoute = true;
 					}
 				}
-
+				
 				// ********* 経路が既に存在する場合 *******
 				if (enableRoute) {
 					// メッセージの送信
 					sendMessage(getRoute(index).nextIpAdd, getRoute(index).hopCount, destination_port
-							, destination_address_b, source_address_b);
+							, destination_address_b, source_address_b, context);
 					
 					// 送信したことを表示
 					text_view_received.append(editTextToBeSent.getText().toString()
 							+ "-->" + destination_address+"\n");
 				}
-
 				// *********** 経路が存在しない場合 ***********
 				else {
 					text_view_received.append("Try Connect...\n");
-
-					// 自身のシーケンス番号をインクリメント
-					seqNum++;
-
-					// TTLを初期値または過去のホップ数+TTL_ｲﾝｸﾘﾒﾝﾄにセット
-					// 宛先シーケンス番号(+未知フラグ)もまとめてセット
-					final boolean flagU;
-					final int seqValue;
-
-					// 無効経路が存在するなら、その情報を流用
-					if (index != -1) {
-						TTL_VALUE = getRoute(index).hopCount + TTL_INCREMENT;
-						flagU = false;
-						seqValue = getRoute(index).toSeqNum;
-					}
-					else{
-						TTL_VALUE = TTL_START;
-						flagU = true;
-						seqValue = 0;
-					}
-
-					// ExpandingRingSearch
-					timer_stop = false;		//timer_stopを初期化
-					final Handler mHandler = new Handler();
 					
-					RING_TRAVERSAL_TIME = 2 * NODE_TRAVERSAL_TIME * (TTL_VALUE + TIMEOUT_BUFFER);
-					
-					try {
-						new Thread(new Runnable() {
-							public void run() {
-								timer: while (true) {
-
-									mHandler.post(new Runnable() {
-										public void run() {
-
-											// Threadは必ずぴったり停止するとは限らないので、停止しなくても中の処理は実行されないようにする
-											if (!timer_stop) {
-
-												// 以下、定期処理の内容
-												// 経路が完成した場合、ループを抜ける
-												if (searchToAdd(destination_address_b) != -1) {
-													text_view_received
-															.append("Success!! Try send again\n");
-													
-													timer_stop = true;
-												}
-
-												// TTLが上限値なRREQを送信済みならループを抜ける
-												if (TTL_VALUE == (TTL_THRESHOLD + TTL_INCREMENT)) {
-													text_view_received
-															.append("Failed\n");
-													timer_stop = true;
-												}
-
-												// TTLの微調整
-												// 例えばINCREMENT2,THRESHOLD7のとき,TTLの変化は2->4->6->7(not
-												// 8)
-												if (TTL_VALUE > TTL_THRESHOLD) {
-													TTL_VALUE = TTL_THRESHOLD;
-												}
-
-												// RREQ_IDをインクリメント
-												RREQ_ID++;
-
-												// 自分が送信したパケットを受信しないようにIDを登録
-												byte[] myAdd = source_address_b;
-												newPastRReq(RREQ_ID, myAdd);
-
-												// RREQの送信
-												do_BroadCast = true;
-
-												try {
-													new RREQ().send(destination_address_b,
-																	myAdd,
-																	false,
-																	false,
-																	false,
-																	false,
-																	flagU,
-																	seqValue,
-																	seqNum,
-																	RREQ_ID,
-																	TTL_VALUE,
-																	destination_port);
-												} catch (Exception e) {
-													e.printStackTrace();
-												}
-
-												// ちょっと強引な待機(本来はRREPが戻ってくれば待たなくていい時間も待っている)
-												// 待ち時間をVALUEに合わせて更新
-												RING_TRAVERSAL_TIME = 2
-														* NODE_TRAVERSAL_TIME
-														* (TTL_VALUE + TIMEOUT_BUFFER);
-
-												TTL_VALUE += TTL_INCREMENT;
-											}
-
-										}
-
-									});
-									// 指定の時間停止する
-									try {
-										Thread.sleep(RING_TRAVERSAL_TIME);
-									} catch (InterruptedException e) {
-									}
-
-									// ループを抜ける処理
-									if (timer_stop) {
-										break timer;
-									}
-								}
-							}
-						}).start();
-
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-
+					// 経路作成
+					routeCreate(destination_address, source_address, destination_port, index
+							, text_view_received, context);
 				}
 			}
 		});
-
+		
+		
 		// 送信Clear、同様にIDから取得
 		Button buttonClear = (Button) findViewById(R.id.buttonClear);
 
@@ -411,6 +296,300 @@ public class AODV_Activity extends Activity {
 				}
 			}
 		});
+		
+	}
+	
+	
+	@Override
+	protected void onResume() {
+		super.onResume();
+		
+		// 暗黙的Intentの回収
+		Intent receive_intent = getIntent();
+		
+		// 受信ログ用のTextView、同様にIDから取得
+		final EditText text_view_received = (EditText) findViewById(R.id.textViewReceived);
+		
+		// Intentからパッケージ名,ID取得
+		String package_name = receive_intent.getStringExtra("PACKAGE");
+		int intent_id = receive_intent.getIntExtra("ID", 0);
+		
+		Log.d("intent",package_name+"-"+intent_id);
+		
+		// 同インテントの多重処理防止 パッケージ名またはIDが異なっていれば受理
+		if( (package_name != prev_receive_package_name)
+				|| intent_id != prev_receive_intent_id){
+			
+			// 直前のパッケージ,IDとして記録
+			prev_receive_package_name = package_name;
+			prev_receive_intent_id = intent_id;
+			
+			// 起動方法のチェック 暗黙的インテント:SENDTOで起動されていれば
+			if(Intent.ACTION_SENDTO.equals(receive_intent.getAction())){
+				final Uri uri = receive_intent.getData();
+				String task = receive_intent.getStringExtra("TASK");
+				
+				// schemeが"connect"なら
+				if("connect".equals(uri.getScheme())){
+					// 変数内の値が消えている場合がある？
+					//editTextDest = (EditText)findViewById(R.id.editTextDest);
+					//editTextToBeSent = (EditText)findViewById(R.id.editTextToBeSent);
+					
+					editTextDest.setText(uri.getEncodedSchemeSpecificPart());
+					editTextToBeSent.setText(task);
+					
+					// 自動送信を試みる
+					// editTextから送信先IP(String)、送信元(String)、port(int)の取得
+					String destination_address = editTextDest.getText().toString();	Log.d("eeeee",destination_address);
+					String source_address = editTextSrc.getText().toString();
+					final int destination_port = Integer.parseInt(editTextDestPort
+							.getText().toString());
+					
+					byte[] destination_address_b = new RREQ().getByteAddress(destination_address);
+					byte[] source_address_b	= new RREQ().getByteAddress(source_address);
+					
+					// UIの出力先を取得
+					//final EditText text_view_received = (EditText) findViewById(R.id.textViewReceived);
+					
+					// 送信先への経路が存在するかチェック
+					final int index = searchToAdd(destination_address_b);
+
+					// 経路が存在する場合、有効かどうかチェック
+					boolean enableRoute = false; // 初期化
+					
+					if (index != -1) {
+						if ( getRoute(index).stateFlag == 1 && 
+								(getRoute(index).lifeTime > new Date().getTime())) {
+							enableRoute = true;
+						}
+					}
+					
+					Context etc_context = context;
+					// ファイルオープン用に他パッケージアプリのコンテキストを取得
+					if( package_name != null ){
+						try {
+							etc_context = createPackageContext(package_name,0);
+						} catch (NameNotFoundException e) {
+							e.printStackTrace();
+						}
+					}
+					
+					// ********* 経路が既に存在する場合 *******
+					if (enableRoute) {
+						// メッセージの送信
+						sendMessage(getRoute(index).nextIpAdd, getRoute(index).hopCount, destination_port
+								, destination_address_b, source_address_b, etc_context);
+						
+						// 送信したことを表示
+						text_view_received.append(editTextToBeSent.getText().toString()
+								+ "-->" + destination_address+"\n");
+					}
+					// *********** 経路が存在しない場合 ***********
+					else {
+						text_view_received.append("Try Connect...\n");
+						
+						// 経路作成
+						routeCreate(destination_address, source_address, destination_port, index
+								, text_view_received, etc_context);
+					}
+				}
+			}
+			
+			// 起動方法のチェック 暗黙的インテント:DELETEで起動されていれば
+			if(Intent.ACTION_DELETE.equals(receive_intent.getAction())){
+				final Uri uri = receive_intent.getData();
+				
+				if("path".equals(uri.getScheme())){
+					deleteFile(uri.getEncodedSchemeSpecificPart());
+				}
+			}
+		}
+	}
+	
+	// ルート作成＋メッセージ送信
+	public static void routeCreate(String destination_address, String source_address, final int destination_port
+			, int search_result, EditText output_view, final Context context_){
+
+		Log.d("debug", "Send__Start");
+
+		// 送信先,送信元IPアドレスのbyte[]化
+		final byte[] destination_address_b = new RREQ()
+				.getByteAddress(destination_address);
+		
+		final byte[] source_address_b = new RREQ()
+		.getByteAddress(source_address);
+		
+		// 検索結果を利用
+		int index = search_result;
+		
+		// 画面出力先
+		final EditText text_view_received = output_view;
+		
+		// 自身のシーケンス番号をインクリメント
+		seqNum++;
+		
+		// もし宛先がブロードキャストアドレスならExpandingRingSearchを行わない
+		if( BLOAD_CAST_ADDRESS.equals(destination_address)){
+			
+			// メッセージ抽出
+			String text = editTextToBeSent.getText().toString();
+			
+			// RREQ_IDをインクリメント
+			RREQ_ID++;
+
+			// 自分が送信したパケットを受信しないようにIDを登録
+			newPastRReq(RREQ_ID, source_address_b);
+
+			// RREQの送信
+			do_BroadCast = true;
+
+			try {
+				new RREQ().send(destination_address_b,
+								source_address_b,
+								false,
+								false,
+								true,
+								false,
+								true,
+								0,
+								seqNum,
+								RREQ_ID,
+								NET_DIAMETER,
+								destination_port,
+								text);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		// 宛先が通常のIPアドレスなら
+		else{
+			// TTLを初期値または過去のホップ数+TTL_ｲﾝｸﾘﾒﾝﾄにセット
+			// 宛先シーケンス番号(+未知フラグ)もまとめてセット
+			final boolean flagU;
+			final int seqValue;
+	
+			// 無効経路が存在するなら、その情報を流用
+			if (index != -1) {
+				TTL_VALUE = getRoute(index).hopCount + TTL_INCREMENT;
+				flagU = false;
+				seqValue = getRoute(index).toSeqNum;
+			}
+			else{
+				TTL_VALUE = TTL_START;
+				flagU = true;
+				seqValue = 0;
+			}
+	
+			// ExpandingRingSearch
+			timer_stop = false;		//timer_stopを初期化
+			final Handler mHandler = new Handler();
+			
+			RING_TRAVERSAL_TIME = 2 * NODE_TRAVERSAL_TIME * (TTL_VALUE + TIMEOUT_BUFFER);
+			
+			try {
+				new Thread(new Runnable() {
+					public void run() {
+						timer: while (true) {
+	
+							mHandler.post(new Runnable() {
+								public void run() {
+									int index_new;
+									byte[] myAdd = source_address_b;
+									
+									// Threadは必ずぴったり停止するとは限らないので、停止しなくても中の処理は実行されないようにする
+									if (!timer_stop) {
+	
+										// 以下、定期処理の内容
+										// 経路が完成した場合、ループを抜ける
+										if ( (index_new =searchToAdd(destination_address_b)) != -1) {
+											text_view_received
+													.append("Route_Create_Success!!\n");
+											
+											timer_stop = true;
+											
+											// メッセージの送信
+											RouteTable rt = getRoute(index_new);
+											sendMessage(rt.nextIpAdd, rt.hopCount, 
+													destination_port, rt.toIpAdd, myAdd, context_);
+											
+											// 送信したことを表示
+											text_view_received.append(editTextToBeSent.getText().toString()
+													+ "-->" + getStringByByteAddress(rt.toIpAdd)+"\n");
+										}
+	
+										// TTLが上限値なRREQを送信済みならループを抜ける
+										else if (TTL_VALUE == (TTL_THRESHOLD + TTL_INCREMENT)) {
+											text_view_received
+													.append("Failed\n");
+											timer_stop = true;
+										}
+	
+										// TTLの微調整
+										// 例えばINCREMENT2,THRESHOLD7のとき,TTLの変化は2->4->6->7(not
+										// 8)
+										if (TTL_VALUE > TTL_THRESHOLD) {
+											TTL_VALUE = TTL_THRESHOLD;
+										}
+	
+										// RREQ_IDをインクリメント
+										RREQ_ID++;
+	
+										// 自分が送信したパケットを受信しないようにIDを登録
+										newPastRReq(RREQ_ID, myAdd);
+	
+										// RREQの送信
+										do_BroadCast = true;
+	
+										try {
+											new RREQ().send(destination_address_b,
+															myAdd,
+															false,
+															false,
+															false,
+															false,
+															flagU,
+															seqValue,
+															seqNum,
+															RREQ_ID,
+															TTL_VALUE,
+															destination_port,
+															null);
+										} catch (Exception e) {
+											e.printStackTrace();
+										}
+	
+										// ちょっと強引な待機(本来はRREPが戻ってくれば待たなくていい時間も待っている)
+										// 待ち時間をVALUEに合わせて更新
+										RING_TRAVERSAL_TIME = 2
+												* NODE_TRAVERSAL_TIME
+												* (TTL_VALUE + TIMEOUT_BUFFER);
+	
+										TTL_VALUE += TTL_INCREMENT;
+									}
+	
+								}
+	
+							});
+							// 指定の時間停止する
+							try {
+								Thread.sleep(RING_TRAVERSAL_TIME);
+							} catch (InterruptedException e) {
+							}
+	
+							// ループを抜ける処理
+							if (timer_stop) {
+								break timer;
+							}
+						}
+					}
+				}).start();
+	
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	
 	}
 	
 	public static	SelectFileDialog	_dlgSelectFile;
@@ -465,6 +644,12 @@ public class AODV_Activity extends Activity {
         // 終了メニューが押されたとき
         case Menu.FIRST + 1:
         	
+//            Intent intent1 = new Intent();
+//            intent1.setAction(Intent.ACTION_CALL);
+//            intent1.setData(Uri.parse("CameraCapture:0_300_200_122.11.1.1"));	// TASK:〇の部分をセット
+//            intent1.putExtra("PACKAGE","jp.ac.ehime_u.cite.udptest");
+//            intent1.putExtra("ID", 1);
+//            AODV_Activity.context.startActivity(intent1);
             //Activity終了
             this.moveTaskToBack(true);
         	
@@ -496,6 +681,8 @@ public class AODV_Activity extends Activity {
 		WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
 		Display display = wm.getDefaultDisplay();
 		final int display_height = display.getHeight();
+		
+		Log.d("gamen_size","height:"+display_height+",wifth"+display.getWidth());
 
 		// タイトル+ステータスバーのサイズを50と仮定、不完全な動的決定
 		text_view_received.setHeight(display_height - received_top
@@ -604,7 +791,7 @@ public class AODV_Activity extends Activity {
 	// [1-4]	:宛先アドレス
 	// [5-8]	:送信元アドレス
 	// [9-?]	:データ
-	private byte[] addMessageTypeString(byte[] message,byte[] toIPAddress,byte[] my_address) {
+	private static byte[] addMessageTypeString(byte[] message,byte[] toIPAddress,byte[] my_address) {
 		byte[] new_message = new byte[1 + 4 + 4 + message.length];
 
 		new_message[0] = 0; // メッセージタイプ0
@@ -646,116 +833,141 @@ public class AODV_Activity extends Activity {
 		return new_message;
 	}
 	
-	private void sendMessage(byte[] destination_next_hop_address_b, int hop_count, int destination_port
-			, byte[] destination_address_b, byte[] source_address_b){
+	public static void sendMessage(byte[] destination_next_hop_address_b, int hop_count, int destination_port
+			, byte[] destination_address_b, byte[] source_address_b, Context context_){
 		
-		context = this;
+		//editTextToBeSent = (EditText)findViewById(R.id.editTextToBeSent);
 		final String text = editTextToBeSent.getText().toString();
+		int index;
 		
 		try{
-			// ファイルオープン
-			FileManager files = new FileManager(text, destination_address_b,
-					source_address_b, context);
-			
-			// 分割パケットの最初の１つを送信
-			files.fileSend(source_address_b, destination_next_hop_address_b, destination_port);
-			
-			// 過程を保持 *分割後,パケットが1つのみでも再送が有りうるので必要*
-			files.add();
-			
-			// タイムアウトを起動
-			final int time = 2 * NODE_TRAVERSAL_TIME * (hop_count + TIMEOUT_BUFFER);
-			final int step = files.file_next_no;
-			final byte[] data = files.buffer;
-			final byte[] dest_next_hop_add = destination_next_hop_address_b;
-			final int port_ = destination_port;
-			final String name = files.file_name;
-			final byte[] dest_add = files.destination_address;
-			
-			final Handler mHandler = new Handler();
-			
-			try {
-				new Thread(new Runnable() {
-					
-					int wait_time = time;
-					int resend_count = 0;
-					int prev_step = step;
-					byte[] buffer = data;
-					byte[] destination_next_hop_address_b = dest_next_hop_add;
-					int port = port_;
-					String file_name = name;
-					byte[] destination_address = dest_add;
-					
-					// 再送処理
-					public void run() {
-						timer: while (true) {
-							
-							mHandler.post(new Runnable() {
-								public void run() {
-									
-									// 送信try
-									try {
-										// 次ホップをルートテーブルから参照
-										InetAddress next_hop_Inet = null;
+			// 古すぎる送信データを削除
+			while( (index=searchLifeTimeEmpty()) != -1){
+				try {
+					AODV_Activity.file_manager.get(index).file_in.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				try {
+					AODV_Activity.file_manager.get(index).file.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				AODV_Activity.file_manager.remove(index);
+			}
+			// ファイルが送信中なら送信中止
+			if(searchProgress(text, destination_address_b) != null){
+				Log.d("FILE_SEND","this_file_sending_now");
+			}
+			else{
+				// ファイルオープン
+				FileManager	files = new FileManager(text, destination_address_b,
+							source_address_b, context_);
+				
+				// Log.d 開始時間
+				Date date = new Date();
+				SimpleDateFormat sdf = new SimpleDateFormat("MMdd'_'HHmmss");
+				
+				String log = "time:"+sdf.format(date);
+				Log.d("SEND_T",log);
+				
+				// 分割パケットの最初の１つを送信
+				files.fileSend(source_address_b, destination_next_hop_address_b, destination_port);
+				
+				// 過程を保持 *分割後,パケットが1つのみでも再送が有りうるので必要*
+				files.add();
+				
+				// タイムアウトを起動
+				final int time = 2 * NODE_TRAVERSAL_TIME * (hop_count + TIMEOUT_BUFFER);
+				final int step = files.file_next_no;
+				final byte[] data = files.buffer;
+				final byte[] dest_next_hop_add = destination_next_hop_address_b;
+				final int port_ = destination_port;
+				final String name = files.file_name;
+				final byte[] dest_add = files.destination_address;
+				
+				final Handler mHandler = new Handler();
+				
+				try {
+					new Thread(new Runnable() {
+						
+						int wait_time = time;
+						int resend_count = 0;
+						int prev_step = step;
+						byte[] buffer = data;
+						byte[] destination_next_hop_address_b = dest_next_hop_add;
+						int port = port_;
+						String file_name = name;
+						byte[] destination_address = dest_add;
+						
+						// 再送処理
+						public void run() {
+							timer: while (true) {
+								
+								mHandler.post(new Runnable() {
+									public void run() {
+										
+										// 送信try
 										try {
-											next_hop_Inet = InetAddress
-													.getByAddress(destination_next_hop_address_b);
-										} catch (UnknownHostException e1) {
+											// 次ホップをルートテーブルから参照
+											InetAddress next_hop_Inet = null;
+											try {
+												next_hop_Inet = InetAddress
+														.getByAddress(destination_next_hop_address_b);
+											} catch (UnknownHostException e1) {
+												e1.printStackTrace();
+											}
+	
+											// 送信先情報
+											InetSocketAddress destination_inet_socket_address = new InetSocketAddress(
+													next_hop_Inet.getHostAddress(), port);
+											
+											// 送信パケットの生成
+											DatagramPacket packet_to_be_sent = new DatagramPacket(
+													buffer, buffer.length,
+													destination_inet_socket_address);
+											// 送信用のクラスを生成、送信、クローズ
+											DatagramSocket datagram_socket = new DatagramSocket();
+											datagram_socket.send(packet_to_be_sent);
+											datagram_socket.close();
+										} catch (SocketException e1) {
+											e1.printStackTrace();
+										} catch (IOException e1) {
 											e1.printStackTrace();
 										}
-
-										// 送信先情報
-										InetSocketAddress destination_inet_socket_address = new InetSocketAddress(
-												next_hop_Inet.getHostAddress(), port);
 										
-										// 送信パケットの生成
-										DatagramPacket packet_to_be_sent = new DatagramPacket(
-												buffer, buffer.length,
-												destination_inet_socket_address);
-										// 送信用のクラスを生成、送信、クローズ
-										DatagramSocket datagram_socket = new DatagramSocket();
-										datagram_socket.send(packet_to_be_sent);
-										datagram_socket.close();
-									} catch (SocketException e1) {
-										e1.printStackTrace();
-									} catch (IOException e1) {
-										e1.printStackTrace();
 									}
 									
+								});
+								// 指定の時間停止する
+								try {
+									Thread.sleep(wait_time);
+								} catch (InterruptedException e) {
 								}
 								
-							});
-							// 指定の時間停止する
-							try {
-								Thread.sleep(wait_time);
-							} catch (InterruptedException e) {
-							}
-							
-							resend_count++;
-							
-							// ループを抜ける処理
-							if (resend_count == MAX_RESEND) {
-								break timer;
-							}
-							FileManager files = searchProgress(file_name, destination_address);
-							if(files == null){
-								break timer;
-							}
-							else{
-								if( files.file_next_no != prev_step){
+								resend_count++;
+								
+								// ループを抜ける処理
+								if (resend_count == MAX_RESEND) {
 									break timer;
 								}
+								FileManager files = searchProgress(file_name, destination_address);
+								if(files == null){
+									break timer;
+								}
+								else{
+									if( files.file_next_no != prev_step){
+										break timer;
+									}
+								}
+								
 							}
-							
 						}
-					}
-				}).start();
-
-			} catch (Exception e) {
-				e.printStackTrace();
+					}).start();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 			}
-			
-			
 		} catch (FileNotFoundException e){
 			// ファイルが開けない場合
 			// **********テキストメッセージ:type0として送信*********
@@ -810,6 +1022,20 @@ public class AODV_Activity extends Activity {
 			}
 		
 			return null;
+		}
+	}
+	
+	// 生存時間が寿命であるindexを返す
+	// 存在しない場合は-1
+	public static int searchLifeTimeEmpty(){
+		synchronized(AODV_Activity.fileManagerLock){
+			long now = new Date().getTime();
+			for(int i=0; i<AODV_Activity.file_manager.size();i++){
+				if( AODV_Activity.file_manager.get(i).life_time < now ){
+					return i;
+				}
+			}
+			return -1;
 		}
 	}
 	

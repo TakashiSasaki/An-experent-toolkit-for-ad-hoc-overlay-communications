@@ -6,7 +6,12 @@ import java.util.Iterator;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager.NameNotFoundException;
+import android.net.Uri;
 import android.os.Handler;
+import android.util.Log;
 import android.widget.EditText;
 
 
@@ -46,8 +51,8 @@ public class RouteManager implements Runnable {
 								AODV_Activity.ALLOWED_HELLO_LOSS *
 								AODV_Activity.HELLO_INTERVAL
 								, myAddress);
-					} catch (Exception e) {
-						e.printStackTrace();
+					} catch (Exception ex) {
+						ex.printStackTrace();
 					}
 				}
 				
@@ -102,8 +107,8 @@ public class RouteManager implements Runnable {
 			
 			try { // 一定時間ごとにループ処理、処理時間は無視？
 				Thread.sleep(AODV_Activity.HELLO_INTERVAL);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+			} catch (InterruptedException ex2) {
+				ex2.printStackTrace();
 			}	
 		}
 	}
@@ -126,9 +131,9 @@ public class RouteManager implements Runnable {
 		try {
 			new RREQ().send(route.toIpAdd, myAdd
 					, false, false, false, false, false
-					, route.toSeqNum, AODV_Activity.seqNum, AODV_Activity.RREQ_ID, TTL, port);
-		} catch (Exception e) {
-			e.printStackTrace();
+					, route.toSeqNum, AODV_Activity.seqNum, AODV_Activity.RREQ_ID, TTL, port, null);
+		} catch (Exception ex3) {
+			ex3.printStackTrace();
 		}
 		
 		// 経路探索期間が過ぎた後、経路が修復されたかチェック
@@ -177,8 +182,8 @@ public class RouteManager implements Runnable {
 			// RERRをユニキャスト
 			try {
 				new RERR().send(false, route.nextIpAdd, route.toSeqNum, atesaki, port);
-			} catch (Exception e) {
-				e.printStackTrace();
+			} catch (Exception ex4) {
+				ex4.printStackTrace();
 			}
 		}
 		else if(route.preList.size()>2){
@@ -187,8 +192,8 @@ public class RouteManager implements Runnable {
 			// RERRをブロードキャスト
 			try {
 				new RERR().send(false, route.nextIpAdd, route.toSeqNum, port);
-			} catch (Exception e) {
-				e.printStackTrace();
+			} catch (Exception ex5) {
+				ex5.printStackTrace();
 			}
 		}
 	}

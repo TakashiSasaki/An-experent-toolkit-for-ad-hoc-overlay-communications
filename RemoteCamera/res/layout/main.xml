@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:orientation="vertical" android:layout_width="fill_parent"
+	android:layout_height="fill_parent">
+	<LinearLayout android:layout_width="fill_parent"
+		android:id="@+id/linearLayout1" android:layout_height="wrap_content">
+		<TextView android:text="Src." android:id="@+id/textViewSrc"
+			android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
+		<EditText android:id="@+id/editTextSrc"
+			android:layout_height="wrap_content" android:layout_width="wrap_content"
+			android:layout_weight="1" android:editable="false"></EditText>
+		<TextView android:text="Port" android:id="@+id/textViewSrcPort"
+			android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
+		<EditText android:id="@+id/editTextSrcPort"
+			android:layout_height="wrap_content" android:layout_width="wrap_content"
+			android:layout_weight="1" android:digits="1234567890"></EditText>
+	</LinearLayout>
+	
+	<LinearLayout android:layout_width="fill_parent"
+		android:id="@+id/linearLayoutFileName" android:layout_height="wrap_content">
+		<TextView android:text="MyDefaultName" android:id="@+id/textViewDefaultFileName"
+			android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
+		<EditText android:id="@+id/editTextDefaultFileName"
+			android:layout_height="wrap_content" android:layout_width="wrap_content"
+			android:layout_weight="1" ></EditText>
+		<TextView android:text=".jpg" android:id="@+id/textViewJpg"
+			android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
+	</LinearLayout>
+	
+	<!-- 枠線用レイアウト -->
+	<LinearLayout
+	    android:id="@+id/linearLayoutRemoteCall"
+	    android:layout_width="match_parent"
+	    android:layout_height="wrap_content"
+	    android:orientation="vertical" 
+      	android:background="@color/lightgray"
+        android:padding="1dip">
+		
+	    <!-- 枠線タイトル -->
+	    <TextView
+		        android:id="@+id/textViewRemoteCall"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:textColor="@color/black"
+		        android:text="RemoteCameraCall" />
+	    
+	    <!-- 1段目_継続撮影のオンオフ -->
+	    <LinearLayout
+		    android:id="@+id/linearLayoutCallOption1"
+		    android:layout_width="fill_parent"
+		    android:layout_height="wrap_content" 
+		    android:background="@color/black">
+		    
+	        <TextView
+		        android:id="@+id/textViewWatching"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:text="WatchingLoop" />
+	        <CheckBox
+	            android:id="@+id/checkBoxWatching"
+	            android:layout_width= "wrap_content"
+	            android:layout_height="wrap_content" />
+
+	    </LinearLayout>
+		
+	    <!-- 2段目_要求サイズ指定 -->
+	    <LinearLayout
+		    android:id="@+id/linearLayoutCallOption2"
+		    android:layout_width="fill_parent"
+		    android:layout_height="wrap_content" 
+		    android:background="@color/black">
+		    
+	    	<TextView
+		        android:id="@+id/textViewCallSizeX"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:text="PictureSize X." />
+		    <EditText
+		        android:id="@+id/editTextPictureSizeWidth"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:digits="1234567890">
+		    </EditText>
+	        <TextView
+		        android:id="@+id/textViewCallSizeY"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:text="Y." />
+		    <EditText
+		        android:id="@+id/editTextPictureSizeHeight"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:digits="1234567890">
+		    </EditText>
+	    </LinearLayout>
+	    
+	    <!-- 3段目_宛先と送信開始ボタン -->
+		<LinearLayout
+		    android:id="@+id/linearLayoutDest"
+		    android:layout_width="fill_parent"
+		    android:layout_height="wrap_content" 
+		    android:background="@color/black">
+
+		    <TextView
+		        android:id="@+id/textViewDest"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:text="Dest." />
+
+		    <EditText
+		        android:id="@+id/editTextDest"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:layout_weight="1"
+		        android:digits="1234567890."
+		        android:fitsSystemWindows="true"
+		        android:text="255.255.255.255" >
+
+		        <requestFocus />
+		    </EditText>
+
+		    <Button
+		        android:id="@+id/buttonSend"
+		        android:layout_width="wrap_content"
+		        android:layout_height="wrap_content"
+		        android:text="Call" />
+		</LinearLayout>
+
+	</LinearLayout>
+
+</LinearLayout>

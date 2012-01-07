@@ -12,6 +12,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 import java.util.Arrays;
+import java.util.Date;
 
 import android.content.Context;
 
@@ -26,6 +27,7 @@ public class FileManager {
 	int file_name_b_length;
 	int file_next_no;
 	byte[] destination_address;
+	long life_time;
 	
 	
 	
@@ -49,6 +51,8 @@ public class FileManager {
 		
 		file_next_no = 1;
 		destination_address = dest_add;
+		
+		life_time = new Date().getTime() + AODV_Activity.ACTIVE_ROUTE_TIMEOUT * 2;
 	}
 
 	// 分割送信(ファイルオープン,クローズ除く)

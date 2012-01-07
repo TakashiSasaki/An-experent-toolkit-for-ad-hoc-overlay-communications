@@ -22,11 +22,12 @@ public class RREQ {
 	byte[] fromIpAdd;	// [16-19] 送信元ノードのIPアドレス
 	int fromSeqNum;		// [20-23] 送信元ノードへの経路において利用される現在のシーケンス番号
 	int timeToLive;		// [24-27] 生存時間TTL、中間ノードを残りいくつまで許すか
+	String message;		// [28-??]*通常では使用しない。ブロードキャストメッセージの場合、メッセージを付加
 	
 	// RREQメッセージの送信
 	// 引数：送信先(String型)
 	public void send(byte[] destination_address, byte[] myAddress, boolean flagJ ,boolean flagR ,boolean flagG ,boolean flagD ,boolean flagU
-			,int toSeq ,int fromSeq,int ID,int TTL,int port) {
+			,int toSeq ,int fromSeq,int ID,int TTL,int port,String text) {
 		
 		// 各フィールドの初期化
 		type = 1;	// RREQを示す
@@ -47,9 +48,22 @@ public class RREQ {
 		fromIpAdd = myAddress;
 		fromSeqNum = fromSeq;
 		timeToLive = TTL;
+		message = text;
+		byte[] message_b = null;
+		boolean bload_cast_flag = false;
 		
 		// UDPパケットに含めるデータ
-		byte[] sendBuffer = new byte[28];
+		byte[] sendBuffer = null;
+		
+		// 最終宛先がブロードキャストアドレスなら
+		if( Arrays.equals(getByteAddress(AODV_Activity.BLOAD_CAST_ADDRESS), destination_address)){
+			message_b = message.getBytes();
+			sendBuffer = new byte[28+message_b.length];
+			bload_cast_flag = true;
+		}
+		else{
+			sendBuffer = new byte[28];
+		}
 		
 		sendBuffer[0] = type;
 		sendBuffer[1] = flag;
@@ -61,6 +75,10 @@ public class RREQ {
 		System.arraycopy(fromIpAdd			  ,0,sendBuffer,16,4);
 		System.arraycopy(intToByte(fromSeqNum),0,sendBuffer,20,4);
 		System.arraycopy(intToByte(timeToLive),0,sendBuffer,24,4);
+		
+		if(bload_cast_flag){
+			System.arraycopy(message_b,0,sendBuffer,28,message_b.length);
+		}
 		
 		// データグラムソケットを開く
 		DatagramSocket soc = null;
@@ -96,27 +114,6 @@ public class RREQ {
         	
         //データグラムソケットを閉じる
         soc.close();
-		
-/****************** 以前の通信手段 *******************************/
-//		// データグラムソケットを開く
-//		DatagramSocket soc = new DatagramSocket();
-//		
-//        // UDPパケットを送信する先となるブロードキャストアドレス (5100番ポート)
-//        InetSocketAddress remoteAddress =
-//        			 new InetSocketAddress("133.71.3.255", 5100);
-//        
-//        // UDPパケット
-//        DatagramPacket sendPacket =
-//            new DatagramPacket(sendBuffer, sendBuffer.length, remoteAddress);
-//        
-//        // DatagramSocketインスタンスを生成して、UDPパケットを送信
-//        new DatagramSocket().send(sendPacket);
-//        
-//        System.out.println("RREQメッセージを送信しました");	//###デバッグ用###
-//        	
-//        //データグラムソケットを閉じる
-//        soc.close();
-/******************************************************************/
         
 	}
 
@@ -263,6 +260,16 @@ public class RREQ {
 		
 		// int型に変換
 		return byteToInt(buf);
+	}
+	// RREQメッセージからメッセージフィールドを返す
+	public byte[] getMessage(byte[] RREQMes, int length){
+		
+		// 該当部分のbyte[]を抜き出し
+		byte[] buf = new byte[length-28];
+		System.arraycopy(RREQMes,28,buf,0,length-28);
+		
+		// int型に変換
+		return buf;
 	}
 	
 	// RREQメッセージの送信元シーケンス番号フィールドをセットして返す

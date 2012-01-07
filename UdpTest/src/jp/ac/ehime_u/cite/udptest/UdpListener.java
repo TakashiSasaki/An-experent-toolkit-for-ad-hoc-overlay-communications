@@ -51,6 +51,9 @@ public class UdpListener implements Runnable {
 		while (true) {
 			try {
 				socket.receive(packet); // blocking
+				
+				Log.d("Udp_Test", "received");
+				
 				// 受信したデータを抽出
 				byte[] received_data = cut_byte_spare(packet.getData() ,packet.getLength());
 				
