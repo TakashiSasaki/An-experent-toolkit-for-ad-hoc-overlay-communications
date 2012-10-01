@@ -12,6 +12,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Display;
@@ -35,7 +36,6 @@ public class ImageViewerActivity extends Activity {
 	private static ImageView view;
 	private static Bitmap bmp;
 	private InputStream in;
-
 	
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -47,11 +47,9 @@ public class ImageViewerActivity extends Activity {
 		
 		if(view == null){
 			view = new ImageView(this);
+			setContentView(view);
 		}
-		
 		RemoteCameraActivity.draw_switch = true;
-		
-		 //Toast.makeText(this, "received:"+new_file_name, Toast.LENGTH_SHORT).show();
 	}
 	
 	@Override
@@ -137,29 +135,43 @@ public class ImageViewerActivity extends Activity {
 		//Toast.makeText(this, image_name_list.get(select_image_no), Toast.LENGTH_SHORT).show();
 	}
 	
-	@Override
+	// メニューの追加
 	public boolean onCreateOptionsMenu(Menu menu) {
-		menu.add(Menu.NONE, Menu.FIRST, Menu.NONE, "close");
-		return super.onCreateOptionsMenu(menu);
+		boolean ret = super.onCreateOptionsMenu(menu);
+
+		menu.add(0, Menu.FIRST, Menu.NONE, "LOOP_STOP")
+				.setIcon(android.R.drawable.ic_menu_close_clear_cancel);
+		menu.add(0, Menu.FIRST+1, Menu.NONE, "exit");
+
+		return ret;
 	}
-	
-	@Override
-	public boolean onPrepareOptionsMenu(Menu menu) {
-		return super.onPrepareOptionsMenu(menu);
-	}
-	
+
+	// メニューが押されたとき
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
-		boolean rc = true;
 		switch (item.getItemId()) {
+
 		case Menu.FIRST:
+			// AODVにインテントを投げる
+			Intent intent = new Intent();
+			intent.setClassName("jp.ac.ehime_u.cite.udptest",
+					"jp.ac.ehime_u.cite.udptest.RouteActivity");
+			intent.setAction(Intent.ACTION_SENDTO);
+			intent.setData(Uri.parse("connect:" + RemoteCameraActivity.calling_address));
+			intent.putExtra("TASK", "TASK:CameraCapture:STOP");
+			intent.putExtra("PACKAGE", "jp.ac.ehime_u.cite.remotecamera");
+			intent.putExtra("ID", RemoteCameraActivity.send_intent_id);
+			startActivity(intent);
+
+			RemoteCameraActivity.send_intent_id++;
+			return true;
+		case Menu.FIRST+1:
 			finish();
-			break;
+			return true;
 		default:
-			rc = super.onOptionsItemSelected(item);
 			break;
 		}
-		return rc;
+		return super.onOptionsItemSelected(item);
 	}
 	
 

@@ -11,6 +11,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.MulticastSocket;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.util.Date;
@@ -70,7 +71,8 @@ public class UdpTestActivity extends Activity {
 		} catch (IOException e3) {
 			e3.printStackTrace();
 		}
-			editTextDest.setText("133.71.232.13");
+			//editTextDest.setText("133.71.232.13");
+			editTextDest.setText("224.0.0.1");
 		
 		// 受信ログ用のTextView、同様にIDから取得
 		final EditText text_view_received = (EditText) findViewById(R.id.textViewReceived);
@@ -102,9 +104,25 @@ public class UdpTestActivity extends Activity {
 				int destination_port = Integer.parseInt(editTextDestPort
 						.getText().toString());
 				// 送信先情報
-				InetSocketAddress destination_inet_socket_address = new InetSocketAddress(
-						destination_address, destination_port);
-
+				//InetSocketAddress destination_inet_socket_address = new InetSocketAddress(
+				//		destination_address, destination_port);
+				// ** Multi **
+				MulticastSocket socket = null;
+				try {
+					socket = new MulticastSocket();
+				} catch (IOException e2) {
+					// TODO 自動生成された catch ブロック
+					e2.printStackTrace();
+				}
+				try {
+					socket.setTTL((byte) 1);
+				} catch (IOException e1) {
+					// TODO 自動生成された catch ブロック
+					e1.printStackTrace();
+				}
+				
+				
+				
 				// 送信する文字列の取得
 				String string_to_be_sent = editTextToBeSent.getText()
 						.toString() + "\r\n";
@@ -120,13 +138,17 @@ public class UdpTestActivity extends Activity {
 					// LogCatに送信情報を出力
 					Log.d("UdpTest", "sending " + string_to_be_sent);
 					// 送信パケットの生成
+					InetAddress address = InetAddress.getByName(destination_address);
 					DatagramPacket packet_to_be_sent = new DatagramPacket(
 							buffer, buffer.length,
-							destination_inet_socket_address);
+					//		destination_inet_socket_address);
+							address ,destination_port);
+						
+					socket.send(packet_to_be_sent);
 					// 送信用のクラスを生成、送信、クローズ
-					DatagramSocket datagram_socket = new DatagramSocket();
-					datagram_socket.send(packet_to_be_sent);
-					datagram_socket.close();
+					//DatagramSocket datagram_socket = new DatagramSocket();
+					//datagram_socket.send(packet_to_be_sent);
+					//datagram_socket.close();
 				} catch (SocketException e) {
 					e.printStackTrace();
 				} catch (IOException e) {

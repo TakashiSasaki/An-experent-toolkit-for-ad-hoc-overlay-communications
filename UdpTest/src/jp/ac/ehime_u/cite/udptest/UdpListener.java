@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.MulticastSocket;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -29,8 +32,11 @@ public class UdpListener implements Runnable {
 	// 受信用の配列やパケットなど
 	private byte[] buffer = new byte[2000];
 	private DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-	private DatagramSocket socket;
-
+	//private DatagramSocket socket;
+	
+	private InetAddress inet ;//= InetAddress.getByName("224.0.0.1");
+	private MulticastSocket socket ;//= new MulticastSocket(12345);
+	
 	// コンストラクタ
 	// 引数1:Handler	メインスレッドのハンドル(Handlerを使うことでUIスレッドの持つキューにジョブ登録ができる)
 	// 引数2:TextView	受信結果を表示するTextView
@@ -39,7 +45,7 @@ public class UdpListener implements Runnable {
 	public UdpListener(Handler handler_, EditText edit_text,
 			int port_, int max_packets) throws SocketException {
 		port = port_;
-		socket = new DatagramSocket(port);
+		//socket = new DatagramSocket(port);
 		maxPackets = max_packets;
 		handler = handler_;
 		editText = edit_text;
@@ -48,6 +54,26 @@ public class UdpListener implements Runnable {
 
 	@Override
 	public void run() {
+		
+		try {
+			inet = InetAddress.getByName("224.0.0.1");
+		} catch (UnknownHostException e1) {
+			// TODO 自動生成された catch ブロック
+			e1.printStackTrace();
+		}
+		try {
+			socket = new MulticastSocket(port);
+		} catch (IOException e1) {
+			// TODO 自動生成された catch ブロック
+			e1.printStackTrace();
+		}
+		try {
+			socket.joinGroup(inet);
+		} catch (IOException e1) {
+			// TODO 自動生成された catch ブロック
+			e1.printStackTrace();
+		}
+		
 		while (true) {
 			try {
 				socket.receive(packet); // blocking

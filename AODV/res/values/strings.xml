@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="hello">Hello World, UdpTestActivity!</string>
-    <string name="app_name">UdpTest</string>
+    <string name="app_name">MANET</string>
     
     <string name="menu_main">送信画面</string>
     <string name="menu_next">ルートテーブル</string>

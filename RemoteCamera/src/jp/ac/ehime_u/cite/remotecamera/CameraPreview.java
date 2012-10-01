@@ -1,6 +1,7 @@
 package jp.ac.ehime_u.cite.remotecamera;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -9,6 +10,7 @@ import java.util.List;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -19,6 +21,7 @@ import android.hardware.Camera.ErrorCallback;
 import android.hardware.Camera.PictureCallback;
 import android.hardware.Camera.PreviewCallback;
 import android.hardware.Camera.ShutterCallback;
+import android.net.Uri;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.Surface;
@@ -99,8 +102,8 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
 		Log.d("TEST", "surfaceDestroyed");
 		if (camera != null) {
 			camera.stopPreview();
-			camera.release();
-			camera = null;
+//			camera.release();
+//			camera = null;
 		}
 	}
 	
@@ -246,72 +249,6 @@ class CameraPreview extends SurfaceView implements SurfaceHolder.Callback {
 				}
 			}
 		}
-	}
-	
-	void cancelAutoFocus() {
-		camera.cancelAutoFocus();
-	}
-	
-	void autoFocus() {
-		camera.autoFocus(new AutoFocusCallback() {
-			@Override
-			public void onAutoFocus(boolean success, final Camera camera) {
-				ShutterCallback shutter = new ShutterCallback() {
-					@Override
-					public void onShutter() {
-						Log.d("TEST", "onShutter");
-					}
-				};
-				PictureCallback raw = new PictureCallback() {
-					@Override
-					public void onPictureTaken(byte[] data, Camera camera) {
-						Log.d("TEST", "onPictureTaken: raw: data=" + data);
-					}
-				};
-				PictureCallback jpeg = new PictureCallback() {
-					@Override
-					public void onPictureTaken(byte[] data, Camera camera) {
-						Log.d("TEST", "onPictureTaken: jpeg: data=" + data);
-						FileOutputStream fos = null;
-						try {
-							// 出力ファイルオープン
-							RemoteCameraActivity a = new RemoteCameraActivity();
-							Log.d("name",RemoteCameraActivity.file_name);
-							fos = context.openFileOutput(RemoteCameraActivity.file_name
-									,context.MODE_WORLD_READABLE | context.MODE_WORLD_WRITEABLE);
-							
-							fos.write(data);
-						} catch (IOException e) {
-							e.printStackTrace();
-						} finally {
-							if (fos != null) {
-								try {
-									fos.close();
-								} catch (IOException e) {
-									e.printStackTrace();
-								}
-							}
-						}
-					}
-				};
-				camera.takePicture(shutter, raw, jpeg);
-				new Thread() {
-					@Override
-					public void run() {
-						try {
-							Thread.sleep(2000);
-						} catch (InterruptedException e) {
-						}
-						camera.startPreview();
-					}
-				}.start();
-				
-			}
-		});
-	}
-	
-	public void close(){
-		((Activity)context).finish();
 	}
 }
 

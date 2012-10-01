@@ -652,7 +652,7 @@ public class UdpListener implements Runnable {
 			    			FReq.file_req(cAddr, my_address, FSend.getAddressSrc(receiveBuffer), frm.receive_file_next_no, file_name, port);
 	        				
 	        			// さらに、受信パケットが最後のパケットならデータ書き込みを終了
-	        			if(frm.receive_file_next_no > packet_total){
+	        			if(frm.receive_file_next_no == (packet_total+1)){
 	        				frm.out.flush();
 		    				frm.out.close();
 		    				frm.file.close();

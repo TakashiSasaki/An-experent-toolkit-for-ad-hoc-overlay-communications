@@ -27,7 +27,9 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 public class ImageTestActivity extends Activity {
@@ -48,29 +50,44 @@ public class ImageTestActivity extends Activity {
         super.onCreate(savedInstanceState);
         
         count++;
-        
-        if(count > 1){
-        	flag += 1;
-        	non_flag += 1;
-        	
-        	Log.d("image","finish()");
-        	//finish();
-        	
-        }
+
+//        if(count > 1){
+//        	flag += 1;
+//        	non_flag += 1;
+//        	
+//        	Log.d("image","finish()");
+//        	//finish();
+//        	
+//        }
+        Log.d("image","onCreate()");
         
         context = this;
         
         setContentView(R.layout.main);
         
-        Button b = (Button)findViewById(R.id.button1);
-		b.setOnClickListener(new View.OnClickListener() {
-			public void onClick(View v) {
-				setTitle("count:"+count+",flag:"+flag+",non_flag:"+non_flag);
-			}
-		});
+//        Button b = (Button)findViewById(R.id.button1);
+//		b.setOnClickListener(new View.OnClickListener() {
+//			public void onClick(View v) {count++;
+//				non_flag++;
+//				setTitle("count:"+count+",flag:"+flag+",non_flag:"+non_flag);
+//				//finish();
+//			}
+//		});
 		
 		
-		setTitle("count:"+count+",flag:"+flag);
+		setTitle("MANET");
+    }
+    
+    @Override
+    public void onPause(){
+    	super.onPause();
+    	Log.d("image","onPause()");
+    }
+    
+    @Override
+    public void onStop(){
+    	super.onStop();
+    	Log.d("image","onStop()");
     }
     
     @Override
@@ -82,24 +99,72 @@ public class ImageTestActivity extends Activity {
     }
     
     @Override
+    public void onStart(){
+    	super.onStart();
+    	
+    	Log.d("image","onStart()");
+    }
+    
+    @Override
     public void onResume(){
     	super.onResume();
     	
     	Log.d("image","onResume()");
-    	setTitle("count:"+count+",flag:"+flag);
+    	//setTitle("count:"+count+",flag:"+flag);
     }
     
     @Override
     public boolean onTouchEvent(MotionEvent event){
     	
-    	if( event.getAction() == MotionEvent.ACTION_DOWN){
-    		
-            Intent intent = new Intent();
-            intent.setClassName(
-                    "jp.ac.ehime_u.cite.image",
-                    "jp.ac.ehime_u.cite.image.ImageTestActivity");
-            
-            startActivity(intent);
+    	if( event.getAction() == MotionEvent.ACTION_DOWN){count++;
+    	
+        Intent it = new Intent();it.setAction(Intent.ACTION_SEND);
+        it.setType("text/plain"); 
+//        it.setData(Uri.parse("mailto:" + "yamada@com"));
+//        it.putExtra(Intent.EXTRA_SUBJECT, "わーい");
+//        it.putExtra(Intent.EXTRA_TEXT, "本文");
+        startActivity(it);
+//    		TextView e = (TextView)findViewById(R.id.Edit);
+//    		e.append("\nRoute_Not_Found");
+//    		
+//			try {
+//				new Thread(new Runnable() {
+//					int count = 3;
+//					
+//					@Override
+//					public void run() {
+//						
+//						while(true){
+//		    	            Intent intent = new Intent();
+//		    	            intent.setAction(Intent.ACTION_VIEW);
+//		    	            intent.setData(Uri.parse("Files:"+"test.jpg"));
+//		    	            intent.putExtra("SOURCE_ADDRESS",
+//		    	            		"111.11.111.11");
+//		    	            intent.putExtra("PACKAGE", "jp.ac.ehime_u.cite.udptest");
+//		    	            intent.putExtra("ID", count);
+//				            intent.setClassName(
+//				                    "jp.ac.ehime_u.cite.remotecamera",
+//				                    "jp.ac.ehime_u.cite.remotecamera.RemoteCameraActivity");
+//		    	            context.startActivity(intent);
+//		    	            
+//		    	            //Toast.makeText(context, "Go!!", Toast.LENGTH_SHORT).show();
+//		    	            
+//		    	            count++;
+//		    	            
+//		    	            try {
+//								Thread.sleep(3000);
+//							} catch (InterruptedException e) {
+//								// TODO 自動生成された catch ブロック
+//								e.printStackTrace();
+//							}
+//						}
+//					}
+//				}).start();
+//	
+//			} catch (Exception e) {
+//				e.printStackTrace();
+//			}
+//
     	}
     	return true;
     }

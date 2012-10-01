@@ -37,7 +37,7 @@
 			android:layout_width="wrap_content" android:id="@+id/buttonFileOpen"></Button>
 		<EditText android:layout_weight="1" android:id="@+id/editTextToBeSent"
 			android:layout_height="wrap_content" android:layout_width="fill_parent"
-			android:text="test test test"></EditText>
+			android:text="message"></EditText>
 		<Button android:layout_height="wrap_content" android:text="Send"
 			android:layout_width="wrap_content" android:id="@+id/buttonSend"></Button>
 	</LinearLayout>
@@ -46,8 +46,8 @@
 				android:layout_height="wrap_content"  android:layout_width="fill_parent"
 				android:background="#FF000000" android:textColor="#FFFFFFFF"
 				android:editable="false" android:enabled="false" 
-				android:scrollbars="vertical"
-				android:textSize="7pt" android:text="LogWindow\n">
+				android:scrollbars="vertical" android:layout_weight="1"
+				android:textSize="7pt" android:text="LogWindow">
 	</EditText>
 
 <!--

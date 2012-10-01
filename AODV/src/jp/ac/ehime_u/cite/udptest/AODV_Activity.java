@@ -64,7 +64,7 @@ public class AODV_Activity extends Activity {
 	public static boolean timer_stop = false;	//ExpandingRingSerchを終了するためのもの
 	
 	// ルートテーブル
-	public static ArrayList<RouteTable> routeTable = new ArrayList<RouteTable>();
+	protected static ArrayList<RouteTable> routeTable = new ArrayList<RouteTable>();
 
 	// PATH_DISCOVERY_TIMEの間に受信したRREQの送信元とIDを記録
 	public static ArrayList<PastData> receiveRREQ_List = new ArrayList<PastData>();
@@ -85,6 +85,7 @@ public class AODV_Activity extends Activity {
 	public static ArrayList<FileManager> file_manager = new ArrayList<FileManager>();
 	
 	// インテントの多重処理制御
+	private static int aodv_count = 0;
 	private static String prev_receive_package_name = null;
 	private static int prev_receive_intent_id = -1;
 
@@ -127,13 +128,15 @@ public class AODV_Activity extends Activity {
 	public void onCreate(Bundle savedInstanceState) {
 		// onCreateをオーバーライドする場合、スーパークラスのメソッドを呼び出す必要がある
 		super.onCreate(savedInstanceState);
-
+		
+		// 起動数++
+		aodv_count++;
+		
 		// 起動時にソフトキーボードの立ち上がりを防ぐ
 		this.getWindow().setSoftInputMode(
 				WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
 
 		// アクティビティにビューグループを追加する
-		
 		setContentView(R.layout.main);
 
 		// IDに対応するViewを取得、型が異なるのでキャスト
@@ -149,14 +152,112 @@ public class AODV_Activity extends Activity {
 			e3.printStackTrace();
 		}
 		
-		// 宛先の初期化？
-		editTextDest.setText("192.168.44.238");
-		
-
-		
+		// 暗黙的Intentの回収
+		Intent receive_intent = getIntent();
 		
 		// 受信ログ用のTextView、同様にIDから取得
 		final EditText text_view_received = (EditText) findViewById(R.id.textViewReceived);
+		
+		// Intentからパッケージ名,ID取得
+		String package_name = receive_intent.getStringExtra("PACKAGE");
+		int intent_id = receive_intent.getIntExtra("ID", 0);
+		
+		Log.d("intent",package_name+"-"+intent_id);
+		
+		// 同インテントの多重処理防止 パッケージ名またはIDが異なっていれば受理
+		if( (package_name != prev_receive_package_name)
+				|| intent_id != prev_receive_intent_id){
+			
+			// 直前のパッケージ,IDとして記録
+			prev_receive_package_name = package_name;
+			prev_receive_intent_id = intent_id;
+			
+			// 起動方法のチェック 暗黙的インテント:SENDTOで起動されていれば
+			if(Intent.ACTION_SENDTO.equals(receive_intent.getAction())){
+				final Uri uri = receive_intent.getData();
+				String task = receive_intent.getStringExtra("TASK");
+				
+				// schemeが"connect"なら
+				if("connect".equals(uri.getScheme())){
+					// 変数内の値が消えている場合がある？
+					//editTextDest = (EditText)findViewById(R.id.editTextDest);
+					//editTextToBeSent = (EditText)findViewById(R.id.editTextToBeSent);
+					
+					editTextDest.setText(uri.getEncodedSchemeSpecificPart());
+					editTextToBeSent.setText(task);
+					
+					// 自動送信を試みる
+					// editTextから送信先IP(String)、送信元(String)、port(int)の取得
+					String destination_address = editTextDest.getText().toString();	Log.d("eeeee",destination_address);
+					String source_address = editTextSrc.getText().toString();
+					final int destination_port = Integer.parseInt(editTextDestPort
+							.getText().toString());
+					
+					byte[] destination_address_b = new RREQ().getByteAddress(destination_address);
+					byte[] source_address_b	= new RREQ().getByteAddress(source_address);
+					
+					// UIの出力先を取得
+					//final EditText text_view_received = (EditText) findViewById(R.id.textViewReceived);
+					
+					// 送信先への経路が存在するかチェック
+					final int index = searchToAdd(destination_address_b);
+
+					// 経路が存在する場合、有効かどうかチェック
+					boolean enableRoute = false; // 初期化
+					
+					if (index != -1) {
+						if ( getRoute(index).stateFlag == 1 && 
+								(getRoute(index).lifeTime > new Date().getTime())) {
+							enableRoute = true;
+						}
+					}
+					
+					Context etc_context = context;
+					// ファイルオープン用に他パッケージアプリのコンテキストを取得
+					if( package_name != null ){
+						try {
+							etc_context = createPackageContext(package_name,0);
+						} catch (NameNotFoundException e) {
+							e.printStackTrace();
+						}
+					}
+					
+					// ********* 経路が既に存在する場合 *******
+					if (enableRoute) {
+						// メッセージの送信
+						sendMessage(getRoute(index).nextIpAdd, getRoute(index).hopCount, destination_port
+								, destination_address_b, source_address_b, etc_context);
+						
+						// 送信したことを表示
+						text_view_received.append(editTextToBeSent.getText().toString()
+								+ "-->" + destination_address+"\n");
+					}
+					// *********** 経路が存在しない場合 ***********
+					else {
+						text_view_received.append("Try Connect...\n");
+						
+						// 経路作成
+						routeCreate(destination_address, source_address, destination_port, index
+								, text_view_received, etc_context);
+					}
+				}
+			}
+			
+			// 起動方法のチェック 暗黙的インテント:DELETEで起動されていれば
+			if(Intent.ACTION_DELETE.equals(receive_intent.getAction())){
+				final Uri uri = receive_intent.getData();
+				
+				if("path".equals(uri.getScheme())){
+					deleteFile(uri.getEncodedSchemeSpecificPart());
+				}
+			}
+		}
+		
+		// AODVが多重起動されたならここで終了
+		if( aodv_count > 1){
+			Log.d("AODV","double_start_to_finish");
+			finish();
+		}
 		
 		// スレッドが起動中でなければ
 		if( udpListenerThread == null ){
@@ -296,114 +397,21 @@ public class AODV_Activity extends Activity {
 				}
 			}
 		});
-		
 	}
 	
+//	@Override
+//	protected void onResume() {
+//		super.onResume();
+//		
+//
+//	}
 	
 	@Override
-	protected void onResume() {
-		super.onResume();
-		
-		// 暗黙的Intentの回収
-		Intent receive_intent = getIntent();
-		
-		// 受信ログ用のTextView、同様にIDから取得
-		final EditText text_view_received = (EditText) findViewById(R.id.textViewReceived);
-		
-		// Intentからパッケージ名,ID取得
-		String package_name = receive_intent.getStringExtra("PACKAGE");
-		int intent_id = receive_intent.getIntExtra("ID", 0);
-		
-		Log.d("intent",package_name+"-"+intent_id);
-		
-		// 同インテントの多重処理防止 パッケージ名またはIDが異なっていれば受理
-		if( (package_name != prev_receive_package_name)
-				|| intent_id != prev_receive_intent_id){
-			
-			// 直前のパッケージ,IDとして記録
-			prev_receive_package_name = package_name;
-			prev_receive_intent_id = intent_id;
-			
-			// 起動方法のチェック 暗黙的インテント:SENDTOで起動されていれば
-			if(Intent.ACTION_SENDTO.equals(receive_intent.getAction())){
-				final Uri uri = receive_intent.getData();
-				String task = receive_intent.getStringExtra("TASK");
-				
-				// schemeが"connect"なら
-				if("connect".equals(uri.getScheme())){
-					// 変数内の値が消えている場合がある？
-					//editTextDest = (EditText)findViewById(R.id.editTextDest);
-					//editTextToBeSent = (EditText)findViewById(R.id.editTextToBeSent);
-					
-					editTextDest.setText(uri.getEncodedSchemeSpecificPart());
-					editTextToBeSent.setText(task);
-					
-					// 自動送信を試みる
-					// editTextから送信先IP(String)、送信元(String)、port(int)の取得
-					String destination_address = editTextDest.getText().toString();	Log.d("eeeee",destination_address);
-					String source_address = editTextSrc.getText().toString();
-					final int destination_port = Integer.parseInt(editTextDestPort
-							.getText().toString());
-					
-					byte[] destination_address_b = new RREQ().getByteAddress(destination_address);
-					byte[] source_address_b	= new RREQ().getByteAddress(source_address);
-					
-					// UIの出力先を取得
-					//final EditText text_view_received = (EditText) findViewById(R.id.textViewReceived);
-					
-					// 送信先への経路が存在するかチェック
-					final int index = searchToAdd(destination_address_b);
-
-					// 経路が存在する場合、有効かどうかチェック
-					boolean enableRoute = false; // 初期化
-					
-					if (index != -1) {
-						if ( getRoute(index).stateFlag == 1 && 
-								(getRoute(index).lifeTime > new Date().getTime())) {
-							enableRoute = true;
-						}
-					}
-					
-					Context etc_context = context;
-					// ファイルオープン用に他パッケージアプリのコンテキストを取得
-					if( package_name != null ){
-						try {
-							etc_context = createPackageContext(package_name,0);
-						} catch (NameNotFoundException e) {
-							e.printStackTrace();
-						}
-					}
-					
-					// ********* 経路が既に存在する場合 *******
-					if (enableRoute) {
-						// メッセージの送信
-						sendMessage(getRoute(index).nextIpAdd, getRoute(index).hopCount, destination_port
-								, destination_address_b, source_address_b, etc_context);
-						
-						// 送信したことを表示
-						text_view_received.append(editTextToBeSent.getText().toString()
-								+ "-->" + destination_address+"\n");
-					}
-					// *********** 経路が存在しない場合 ***********
-					else {
-						text_view_received.append("Try Connect...\n");
-						
-						// 経路作成
-						routeCreate(destination_address, source_address, destination_port, index
-								, text_view_received, etc_context);
-					}
-				}
-			}
-			
-			// 起動方法のチェック 暗黙的インテント:DELETEで起動されていれば
-			if(Intent.ACTION_DELETE.equals(receive_intent.getAction())){
-				final Uri uri = receive_intent.getData();
-				
-				if("path".equals(uri.getScheme())){
-					deleteFile(uri.getEncodedSchemeSpecificPart());
-				}
-			}
-		}
+	protected void onDestroy(){
+		super.onDestroy();
+		Log.d("ondes","onDestroy()");
+		// 起動数--
+		aodv_count--;
 	}
 	
 	// ルート作成＋メッセージ送信
@@ -651,7 +659,10 @@ public class AODV_Activity extends Activity {
 //            intent1.putExtra("ID", 1);
 //            AODV_Activity.context.startActivity(intent1);
             //Activity終了
-            this.moveTaskToBack(true);
+            //this.moveTaskToBack(true);
+        	
+        	//udpListenerThread.destroy();
+        	finish();
         	
             return true;
         default:
@@ -659,35 +670,34 @@ public class AODV_Activity extends Activity {
         }
         return super.onOptionsItemSelected(item);
     }
-
 	
 	
 	// ログの表示用EditTextのサイズを画面サイズに合わせて動的に決定
 	// OnCreate()ではまだViewがレイアウトが初期化されていないため？
 	// Viewサイズなどの取得が不可
-	@Override
-	public void onWindowFocusChanged(boolean hasFocus) {
-		super.onWindowFocusChanged(hasFocus);
-		
-		// receivedのY座標を取得 * タイトルバー,ステータスバーの下が0扱い *
-		final EditText text_view_received = (EditText) findViewById(R.id.textViewReceived);
-		final int received_top = text_view_received.getTop();
-
-		// Clearのサイズを取得
-		final Button clear_button = (Button) findViewById(R.id.buttonClear);
-		final int clear_height = clear_button.getHeight();
-
-		// 画面サイズを取得 *タイトルバー,ステータスバー含む*
-		WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
-		Display display = wm.getDefaultDisplay();
-		final int display_height = display.getHeight();
-		
-		Log.d("gamen_size","height:"+display_height+",wifth"+display.getWidth());
-
-		// タイトル+ステータスバーのサイズを50と仮定、不完全な動的決定
-		text_view_received.setHeight(display_height - received_top
-				- clear_height - 50);
-	}
+//	@Override
+//	public void onWindowFocusChanged(boolean hasFocus) {
+//		super.onWindowFocusChanged(hasFocus);
+//		
+//		// receivedのY座標を取得 * タイトルバー,ステータスバーの下が0扱い *
+//		final EditText text_view_received = (EditText) findViewById(R.id.textViewReceived);
+//		final int received_top = text_view_received.getTop();
+//
+//		// Clearのサイズを取得
+//		final Button clear_button = (Button) findViewById(R.id.buttonClear);
+//		final int clear_height = clear_button.getHeight();
+//
+//		// 画面サイズを取得 *タイトルバー,ステータスバー含む*
+//		WindowManager wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
+//		Display display = wm.getDefaultDisplay();
+//		final int display_height = display.getHeight();
+//		
+//		Log.d("gamen_size","height:"+display_height+",wifth"+display.getWidth());
+//
+//		// タイトル+ステータスバーのサイズを50と仮定、不完全な動的決定
+//		text_view_received.setHeight(display_height - received_top
+//				- clear_height - 50);
+//	}
 	
 	
 

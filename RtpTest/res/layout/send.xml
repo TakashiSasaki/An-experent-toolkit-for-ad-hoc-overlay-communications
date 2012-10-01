@@ -4,16 +4,16 @@
 	android:layout_height="fill_parent">
 	<LinearLayout android:layout_width="fill_parent"
 		android:id="@+id/linearLayout1" android:layout_height="wrap_content">
-		<TextView android:text="Src." android:id="@+id/textViewSrc" 
+		<TextView android:text="Src." android:id="@+id/textViewSrc"
 			android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
-		<EditText android:id="@+id/editTextSrc" android:text="10.0.2.15"
+		<EditText android:id="@+id/editTextSrc"
 			android:layout_height="wrap_content" android:layout_width="wrap_content"
 			android:layout_weight="1" android:editable="false"></EditText>
 		<TextView android:text="Port" android:id="@+id/textViewSrcPort"
 			android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
 		<EditText android:id="@+id/editTextSrcPort"
 			android:layout_height="wrap_content" android:layout_width="wrap_content"
-			android:layout_weight="1" android:digits="1234567890"></EditText>
+			android:layout_weight="1"></EditText>
 	</LinearLayout>
 	<LinearLayout android:layout_width="fill_parent"
 		android:id="@+id/linearLayoutDest" android:layout_height="wrap_content">
@@ -22,12 +22,12 @@
 		<EditText android:id="@+id/editTextDest"
 			android:layout_height="wrap_content" android:layout_width="wrap_content"
 			android:layout_weight="1" android:fitsSystemWindows="true"
-			android:text="127.0.0.1" android:digits="1234567890."></EditText>
+			android:text="127.0.0.1"></EditText>
 		<TextView android:text="Port" android:id="@+id/textViewDestPort"
 			android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
 		<EditText android:id="@+id/editTextDestPort"
 			android:layout_height="wrap_content" android:layout_width="wrap_content"
-			android:layout_weight="1" android:digits="1234567890." android:text="12345">
+			android:layout_weight="1" android:text="12345">
 			<requestFocus></requestFocus>
 		</EditText>
 	</LinearLayout>
@@ -41,24 +41,50 @@
 		<Button android:layout_height="wrap_content" android:text="Send"
 			android:layout_width="wrap_content" android:id="@+id/buttonSend"></Button>
 	</LinearLayout>
-<ScrollView
-    android:layout_width="fill_parent"
-    android:layout_height="wrap_content"
-    android:fadingEdgeLength="100dp"
-    android:layout_weight="1"
->
-    <LinearLayout
-        android:orientation="vertical"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-    >
-        <TextView android:text="LogWindow" android:textSize="18dp"
-            android:id="@+id/Edit" android:layout_width="wrap_content" android:layout_height="wrap_content"></TextView>
-    </LinearLayout>
-</ScrollView>	
-	<LinearLayout android:layout_width="fill_parent" android:id="@+id/linearLayout3" android:layout_height="wrap_content">
-		<Button android:layout_height="wrap_content" android:id="@+id/buttonClear" android:text="Clear" android:layout_width="0dip" android:layout_weight="1"></Button>
-		<Button android:layout_height="wrap_content" android:id="@+id/buttonShowRouteTable"  android:text="ShowRoute" android:layout_width="0dip" android:layout_weight="1" ></Button>
+
+	<LinearLayout
+	    android:id="@+id/linearLayout4"
+	    android:layout_width="match_parent" android:layout_weight="1"
+	    android:layout_height="wrap_content" >
+
+		<EditText
+		    android:id="@+id/textViewReceived"
+		    android:layout_width="fill_parent" android:layout_weight="1"
+		    android:layout_height="wrap_content"
+		    android:layout_marginLeft="3pt"
+		    android:layout_marginRight="3pt"
+		    android:background="#FF000000"
+		    android:editable="false"
+		    android:enabled="false"
+		    android:scrollbars="vertical"
+		    android:text="EditText"
+		    android:textColor="#FFFFFFFF"
+		    android:textSize="7pt" />
+
+		<VideoView
+		    android:id="@+id/videoView1" android:visibility="invisible"
+		    android:layout_width="match_parent" android:layout_weight="2"
+		    android:layout_height="wrap_content" />
+
+	</LinearLayout>
+
+	<LinearLayout
+	    android:id="@+id/linearLayout3"
+	    android:layout_width="match_parent"
+	    android:layout_height="wrap_content" >
+
+		<Button
+		    android:id="@+id/buttonClear"
+		    android:layout_width="wrap_content" android:layout_weight="1"
+		    android:layout_height="wrap_content"
+		    android:text="Clear" />
+
+		<Button
+		    android:id="@+id/Media"
+		    android:layout_width="wrap_content" android:layout_weight="1"
+		    android:layout_height="wrap_content"
+		    android:text="Media" />
+
 	</LinearLayout>
 
 </LinearLayout>

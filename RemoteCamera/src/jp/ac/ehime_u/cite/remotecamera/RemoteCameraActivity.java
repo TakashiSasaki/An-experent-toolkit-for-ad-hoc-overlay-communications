@@ -64,13 +64,13 @@ public class RemoteCameraActivity extends Activity{
 	private EditText editTextPictureSizeWidth;
 	private EditText editTextPictureSizeHeight;
 	private CheckBox checkBoxWatching;
-	private String calling_address;
+	protected static String calling_address;
 	private String calling_file_name;
 	
 	// インテント制御用変数
 	private static int prev_receive_intent_id = -1;
 	private static String prev_receive_intent_package_name = null;
-	private static int send_intent_id = 0;
+	protected static int send_intent_id = 0;
 	
 	// インテントによる多重起動を制御するための変数
 	// 起動中のActivity数をカウント
@@ -78,18 +78,15 @@ public class RemoteCameraActivity extends Activity{
 	protected static int image_viewer_count = 0;
 	protected static int auto_focus_count = 0;
 	
-	// カメラ制御_１度のみ撮影後、ファイル送信
-	protected static boolean do_capture = false;
-	
 	// ファイル関連
 	protected static String file_name;
 	protected static String file_path;
 	
 	// 古いファイルの削除
-	private static int DELETE_TIME = 90 * 1000; // [ms]
+	protected static int DELETE_TIME = 90 * 1000; // [ms]
 	
 	// 子Activityに渡すコンテキスト
-	public static Context context;
+	protected static Context context;
 	
 	/***** ImageViewerActivityのメンバ変数(一部)
 	 * インテントの代行処理を親Activityで行うために必要 
@@ -99,18 +96,19 @@ public class RemoteCameraActivity extends Activity{
 	protected static ArrayList<String> address_list = new ArrayList<String>();
 	protected static boolean draw_switch;
 	
+	/***** AutoFocusのメンバ変数(一部) *****/
+	protected static boolean loop_flag;
+	
 	
     /** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-		// 起動時にソフトキーボードの立ち上がりを防ぐ
-		this.getWindow().setSoftInputMode(
-				WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
 		
 		// 起動個数++
 		remote_camera_count++;
+		
+		context = this;
 		
 		// 暗黙的Intentの回収処理
 		Intent receive_intent = getIntent();
@@ -126,8 +124,10 @@ public class RemoteCameraActivity extends Activity{
 			prev_receive_intent_package_name = package_name;
 			prev_receive_intent_id = intent_id;
 		
-			// 起動方法のチェック 暗黙的インテント:CALLで起動されていれば
-			if(Intent.ACTION_CALL.equals(receive_intent.getAction())){
+			// 起動方法のチェック 暗黙的インテント:CALLであり
+			// 画像ヴューが起動していなければ
+			if(Intent.ACTION_CALL.equals(receive_intent.getAction())
+					&& image_viewer_count == 0){
 				final Uri uri = receive_intent.getData();
 				
 				// schemeが"CameraCapture"なら
@@ -136,33 +136,36 @@ public class RemoteCameraActivity extends Activity{
 					// "CameraCapture:"以降を取得
 					String call_data = uri.getEncodedSchemeSpecificPart();
 					
-					// 先頭から順に切り出し
-					String[] call_data_list = call_data.split("_");
-					// [0]:フラグ
-					// [1]:要求横サイズ
-					// [2]:要求縦サイズ
-					// [3]:送信元(返信用)
-					calling_address = call_data_list[3].toString();
+					// STOP命令ならフラグを切り替えて終了
+					if("STOP".equals(call_data)){
+						loop_flag = false;
+					}
+					else{
+						// 先頭から順に切り出し
+						String[] call_data_list = call_data.split("_");
 					
-					// セーブファイル名を指定
-					// ファイル名に日付を使用
-//					Date date = new Date();
-//					SimpleDateFormat sdf = new SimpleDateFormat("yyyy'_'MMdd'_'HHmmss");
-//					file_name = sdf.format(date) + ".jpg";
-					
-					file_name = editTextDefaultPictureName.getText().toString() + ".jpg";
-					
-					// カメラ起動
-		            Intent intent = new Intent();
-		            intent.setClassName(
-		                    "jp.ac.ehime_u.cite.remotecamera",
-		                    "jp.ac.ehime_u.cite.remotecamera.AutoFocus");
-		            
-		            intent.putExtra("FLAG", call_data_list[0]);
-		            intent.putExtra("SIZE_X", Integer.parseInt(call_data_list[1]));
-		            intent.putExtra("SIZE_Y", Integer.parseInt(call_data_list[2]));
-		            
-		            startActivity(intent);
+						// [0]:フラグ
+						// [1]:要求横サイズ
+						// [2]:要求縦サイズ
+						// [3]:送信元(返信用)
+						calling_address = call_data_list[3].toString();
+						
+						file_name = getPreDefaultFileName();
+						
+						// カメラが起動中でなければ起動
+						if(auto_focus_count == 0){
+				            Intent intent = new Intent();
+				            intent.setClassName(
+				                    "jp.ac.ehime_u.cite.remotecamera",
+				                    "jp.ac.ehime_u.cite.remotecamera.AutoFocus");
+				            
+				            intent.putExtra("FLAG", call_data_list[0]);
+				            intent.putExtra("SIZE_X", Integer.parseInt(call_data_list[1]));
+				            intent.putExtra("SIZE_Y", Integer.parseInt(call_data_list[2]));
+				            
+				            startActivity(intent);
+						}
+					}
 				}
 			}
 			
@@ -183,7 +186,7 @@ public class RemoteCameraActivity extends Activity{
 					
 					deleteOldFile();
 					moveFile();
-					deleteAodvFile(calling_file_name);
+					//deleteAodvFile(calling_file_name);
 					
 					// インテントの処理代行
 					if( (calling_file_name != null) && (calling_address != null) ){
@@ -247,6 +250,10 @@ public class RemoteCameraActivity extends Activity{
 			finish();
 		}
 		
+		// 起動時にソフトキーボードの立ち上がりを防ぐ
+		this.getWindow().setSoftInputMode(
+				WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+		
 		// アクティビティにビューグループを追加する
 		setContentView(R.layout.main);
 		
@@ -259,7 +266,7 @@ public class RemoteCameraActivity extends Activity{
 		editTextPictureSizeHeight = (EditText) findViewById(R.id.editTextPictureSizeHeight);
 		checkBoxWatching = (CheckBox) findViewById(R.id.checkBoxWatching);
 		
-		context = this;
+		
 		
 		// 自身のアドレスを取得
 		try {
@@ -271,6 +278,7 @@ public class RemoteCameraActivity extends Activity{
 		// デフォルト写真ファイル名を取得
 		// 過去に設定した名前があるならそれを継続利用 *ローカルファイルを利用
 		editTextDefaultPictureName.setText(getPreDefaultFileName(editTextSrc.getText().toString()));
+		
 		
 		// ファイル名を設定時にローカルファイルに保存するイベントを登録
 		editTextDefaultPictureName.addTextChangedListener(new TextWatcher() {
@@ -331,32 +339,6 @@ public class RemoteCameraActivity extends Activity{
 		});
 
     }
-    
-
-
-	// onStartでIntentを読み込むとカメラ取る⇒OnStart()⇒カメラのループが発生？
-	@Override
-	protected void onStart() {
-		super.onStart();
-		
-		// リモートコールされ、写真取得済みなら
-		if(do_capture){
-			do_capture = false;
-			
-			// AODVに暗黙的インテントを投げる
-            Intent intent = new Intent();
-            intent.setAction(Intent.ACTION_SENDTO);
-            intent.setData(Uri.parse("connect:"+calling_address));
-            intent.putExtra("TASK", file_name);
-            intent.putExtra("PACKAGE","jp.ac.ehime_u.cite.remotecamera");
-            intent.putExtra("ID", send_intent_id);
-            startActivity(intent);
-            
-            send_intent_id++;
-            
-            
-		}
-	}
 	
 	@Override
 	public void onDestroy(){
@@ -492,7 +474,7 @@ public class RemoteCameraActivity extends Activity{
 					long last_update_time = files[i].lastModified();
 					
 					// 最終更新日時から削除時間以上の時間が過ぎていれば
-					if( (now_time - last_update_time) < DELETE_TIME){
+					if( (now_time - last_update_time) > DELETE_TIME){
 						deleteFile(files[i].getName());
 					}
 				}
@@ -566,6 +548,26 @@ public class RemoteCameraActivity extends Activity{
 		} catch (Exception e) {	// IOException+FileNotFoundException+...
 			return ip_address.replaceAll("\\.", "_");
 		}
+	}
+    private String getPreDefaultFileName() {
+    	
+    	try {
+			InputStream in = openFileInput("fileName.txt");
+			BufferedReader reader = new BufferedReader(new InputStreamReader(in,"UTF-8"));
+			String s = reader.readLine();
+			
+			reader.close();
+			in.close();
+			return s;
+			
+		} catch (Exception e) {	// IOException+FileNotFoundException+...
+			try {
+				return getIPAddress().replaceAll("\\.", "_");
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+		}
+		return null;
 	}
     
     // デフォルトネームとしてローカルファイルに保持
